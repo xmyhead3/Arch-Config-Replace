@@ -312,8 +312,12 @@ clear
 draw_header
 echo -e "${BOLD}${C_BLUE}::${RESET} ${BOLD}Starting Installation Process...${RESET}\n"
 
+# Pre-authenticate sudo to prevent password prompts from breaking during piped commands
+echo -e "${C_CYAN}[ INFO ]${RESET} Requesting sudo privileges for installation..."
+sudo -v
+
 # --- 1. Install Dependencies ---
-echo -e "${C_CYAN}[ INFO ]${RESET} Installing System Packages...\n"
+echo -e "\n${C_CYAN}[ INFO ]${RESET} Installing System Packages...\n"
 if [[ "$OS" == "fedora" ]]; then
     sudo dnf copr enable -y errornointernet/quickshell > /dev/null 2>&1 || true
 fi
@@ -323,11 +327,21 @@ for pkg in "${PKGS[@]}"; do
     echo -e "${C_BLUE}::${RESET} ${BOLD}Installing ${pkg}...${RESET}"
     echo -e "${C_CYAN}=================================================================${RESET}"
     
-    if $PKG_MANAGER "$pkg"; then
-        echo -e "\n${C_GREEN}[ OK ] Successfully installed ${pkg}${RESET}"
+    if [[ "$OS" == "fedora" ]]; then
+        if $PKG_MANAGER "$pkg"; then
+            echo -e "\n${C_GREEN}[ OK ] Successfully installed ${pkg}${RESET}"
+        else
+            echo -e "\n${C_RED}[ FAILED ] Failed to install ${pkg}${RESET}"
+            FAILED_PKGS+=("$pkg")
+        fi
     else
-        echo -e "\n${C_RED}[ FAILED ] Failed to install ${pkg}${RESET}"
-        FAILED_PKGS+=("$pkg")
+        # Arch: Pipe 'yes ""' (Enter keystrokes) to automatically choose the default provider (1)
+        if yes "" | $PKG_MANAGER "$pkg"; then
+            echo -e "\n${C_GREEN}[ OK ] Successfully installed ${pkg}${RESET}"
+        else
+            echo -e "\n${C_RED}[ FAILED ] Failed to install ${pkg}${RESET}"
+            FAILED_PKGS+=("$pkg")
+        fi
     fi
     sleep 0.5
 done
