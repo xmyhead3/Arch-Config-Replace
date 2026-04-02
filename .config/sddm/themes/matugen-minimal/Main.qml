@@ -9,6 +9,16 @@ Rectangle {
     height: 1080
     color: Colors.base
 
+    // SDDM Connections for error handling
+    Connections {
+        target: sddm
+        function onLoginFailed() {
+            passwordField.text = ""
+            errorMessage.opacity = 1.0
+            errorHideTimer.restart()
+        }
+    }
+
     // 1. BACKGROUND & BLUR
     Item {
         anchors.fill: parent
@@ -81,7 +91,7 @@ Rectangle {
 
         // Avatar
         Rectangle {
-            Layout.alignment: Qt.AlignVCenter
+            Layout.alignment: Qt.AlignVCenter | Qt.AlignTop
             width: 150; height: 150
             radius: 75
             color: Qt.rgba(Colors.surface0.r, Colors.surface0.g, Colors.surface0.b, 0.5)
@@ -113,31 +123,89 @@ Rectangle {
                 Layout.alignment: Qt.AlignLeft
             }
 
-            // NEW: Minimal Session Switcher
+            // IMPROVED: Styled Session Switcher
             ComboBox {
                 id: sessionMenu
                 Layout.alignment: Qt.AlignLeft
+                Layout.preferredWidth: 280
                 model: sessionModel
                 textRole: "name"
                 currentIndex: sessionModel.lastIndex
                 font.family: "JetBrains Mono"
                 font.pixelSize: 14
                 
-                // Keep it looking like plain text until clicked
-                background: Rectangle { color: "transparent" }
+                background: Rectangle {
+                    color: Qt.rgba(Colors.surface0.r, Colors.surface0.g, Colors.surface0.b, 0.5)
+                    radius: 12
+                    border.width: 1
+                    border.color: sessionMenu.hovered || sessionMenu.popup.visible ? Colors.text : "transparent"
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+                }
+
                 contentItem: Text {
+                    leftPadding: 16
+                    rightPadding: sessionMenu.indicator.width + sessionMenu.spacing
                     text: "󰧨  " + sessionMenu.currentText
                     color: Colors.subtext0
                     font: sessionMenu.font
                     verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+
+                indicator: Text {
+                    x: sessionMenu.width - width - 16
+                    y: sessionMenu.topPadding + (sessionMenu.availableHeight - height) / 2
+                    text: ""
+                    font.family: "Iosevka Nerd Font"
+                    font.pixelSize: 14
+                    color: Colors.subtext0
+                }
+
+                popup: Popup {
+                    y: sessionMenu.height + 8
+                    width: sessionMenu.width
+                    padding: 8
+                    
+                    background: Rectangle {
+                        color: Colors.base
+                        radius: 12
+                        border.width: 1
+                        border.color: Qt.rgba(Colors.text.r, Colors.text.g, Colors.text.b, 0.15)
+                    }
+
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: sessionMenu.popup.visible ? sessionMenu.delegateModel : null
+                        ScrollIndicator.vertical: ScrollIndicator { }
+                    }
+                }
+
+                delegate: ItemDelegate {
+                    width: sessionMenu.popup.width - 16
+                    padding: 12
+                    
+                    contentItem: Text {
+                        text: model.name
+                        color: hovered ? Colors.base : Colors.text
+                        font: sessionMenu.font
+                        elide: Text.ElideRight
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    
+                    background: Rectangle {
+                        radius: 8
+                        color: hovered ? Colors.text : "transparent"
+                        Behavior on color { ColorAnimation { duration: 100 } }
+                    }
                 }
             }
 
             Rectangle {
-                width: 280
-                height: 60
+                Layout.preferredWidth: 280
+                Layout.preferredHeight: 60
                 radius: 30
-                clip: true // FIX: Stops the visual overflow of the box
+                clip: true 
                 
                 color: Qt.rgba(Colors.surface0.r, Colors.surface0.g, Colors.surface0.b, 0.5)
                 border.width: 2
@@ -150,23 +218,56 @@ Rectangle {
                     anchors.leftMargin: 20
                     anchors.rightMargin: 20
                     verticalAlignment: TextInput.AlignVCenter
-                    clip: true // FIX: Ensures the text itself is cut off at the margins
+                    clip: true 
                     echoMode: TextInput.Password
                     font.family: "JetBrains Mono"
                     font.pixelSize: 24
                     color: Colors.text
                     focus: true
 
+                    Text {
+                        text: "Password..."
+                        color: Qt.rgba(Colors.subtext0.r, Colors.subtext0.g, Colors.subtext0.b, 0.5)
+                        font: passwordField.font
+                        visible: !passwordField.text && !passwordField.inputMethodComposing
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
                     onAccepted: {
                         if (text !== "") {
-                            // FIX: Now uses the selected session from the ComboBox above
+                            errorMessage.opacity = 0.0 // Hide error on new attempt
                             sddm.login(userModel.lastUser, text, sessionMenu.currentIndex)
+                        }
+                    }
+                    
+                    onTextChanged: {
+                        if (errorMessage.opacity > 0) {
+                            errorMessage.opacity = 0.0
                         }
                     }
                 }
             }
+
+            // NEW: Error Message Label
+            Text {
+                id: errorMessage
+                Layout.alignment: Qt.AlignHCenter
+                text: "Login failed. Please try again."
+                font.family: "JetBrains Mono"
+                font.pixelSize: 12
+                color: Colors.red
+                opacity: 0.0
+                Behavior on opacity { NumberAnimation { duration: 200 } }
+
+                Timer {
+                    id: errorHideTimer
+                    interval: 3000
+                    onTriggered: errorMessage.opacity = 0.0
+                }
+            }
         }
     }
+    
     // 4. POWER CONTROLS
     RowLayout {
         anchors.bottom: parent.bottom

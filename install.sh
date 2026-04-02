@@ -60,7 +60,7 @@ ARCH_PKGS=(
     "pulseaudio-alsa" "ladspa" "imagemagick" "wget" "file" "git" "psmisc"
     "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git" "unzip"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
-    "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd-git"
+    "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd-git" "nautilus"
 )
 
 FEDORA_PKGS=(
@@ -72,7 +72,7 @@ FEDORA_PKGS=(
     "pulseaudio-utils" "ladspa" "imagemagick" "wget" "file" "git" "psmisc"
     "matugen" "ffmpeg" "fastfetch" "quickshell" "unzip"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
-    "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd"
+    "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd" "nautilus"
 )
 
 # ==============================================================================
@@ -895,6 +895,19 @@ HYPR_CONF="$TARGET_CONFIG_DIR/hypr/hyprland.conf"
 ZSH_RC="$HOME/.zshrc"
 WP_QML="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml"
 WP_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/wallpaper"
+
+# -> NEW: Desktop/Laptop Battery Adaptability <-
+QS_BAT_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/battery"
+echo -e "  -> Checking chassis for battery presence..."
+if ls /sys/class/power_supply/BAT* 1> /dev/null 2>&1; then
+    echo -e "  -> ${C_GREEN}Battery detected.${RESET} Keeping Laptop Battery widget."
+else
+    echo -e "  -> ${C_YELLOW}No battery detected (Desktop system).${RESET} Swapping to System Monitor widget."
+    if [ -f "$QS_BAT_DIR/BatteryPopupAlt.qml" ]; then
+        mv "$QS_BAT_DIR/BatteryPopup.qml" "$QS_BAT_DIR/BatteryPopup_laptop_backup.qml" 2>/dev/null || true
+        mv "$QS_BAT_DIR/BatteryPopupAlt.qml" "$QS_BAT_DIR/BatteryPopup.qml" 2>/dev/null || true
+    fi
+fi
 
 if [ -f "$HYPR_CONF" ]; then
     # 1. Inject SwayOSD Autostart (Looking for the new 'awww-daemon' entry)
