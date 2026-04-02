@@ -52,9 +52,9 @@ ARCH_PKGS=(
     "cliphist" "jq" "socat" "pamixer" "brightnessctl" "acpi" "iw"
     "bluez" "bluez-utils" "libnotify" "networkmanager" "lm_sensors" "bc" 
     "pulseaudio-alsa" "ladspa" "imagemagick" "wget" "file" "git" "psmisc"
-    "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git"
+    "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git" "unzip"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
-    "wmctrl" "power-profiles-daemon"
+    "wmctrl" "power-profiles-daemon" "easyeffects" "sddm"
 )
 
 FEDORA_PKGS=(
@@ -64,9 +64,9 @@ FEDORA_PKGS=(
     "cliphist" "jq" "socat" "pamixer" "brightnessctl" "acpi" "iw"
     "bluez" "bluez-tools" "libnotify" "NetworkManager" "lm_sensors" "bc" 
     "pulseaudio-utils" "ladspa" "imagemagick" "wget" "file" "git" "psmisc"
-    "matugen" "ffmpeg" "fastfetch" "quickshell"
+    "matugen" "ffmpeg" "fastfetch" "quickshell" "unzip"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
-    "wmctrl" "power-profiles-daemon"
+    "wmctrl" "power-profiles-daemon" "easyeffects" "sddm"
 )
 
 # ==============================================================================
@@ -84,7 +84,7 @@ case $OS in
     arch|endeavouros|manjaro|cachyos)
         PKGS=("${ARCH_PKGS[@]}")
         
-        # 1. Ensure basic pacman tools are present (added jq and curl for Weather API)
+        # 1. Ensure basic pacman tools are present
         if ! command -v fzf &> /dev/null || ! command -v lspci &> /dev/null || ! command -v jq &> /dev/null || ! command -v curl &> /dev/null; then
             echo -e "${C_CYAN}Bootstrapping TUI dependencies (fzf, pciutils, jq, curl)...${RESET}"
             sudo pacman -Sy --noconfirm --needed fzf pciutils jq curl > /dev/null 2>&1
@@ -123,13 +123,23 @@ case $OS in
 esac
 
 # ==============================================================================
-# Hardware Information Gathering
+# Hardware Information Gathering & Nvidia Detection
 # ==============================================================================
 USER_NAME=$USER
 OS_NAME=$(grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2 | tr -d '"')
 CPU_INFO=$(grep -m 1 'model name' /proc/cpuinfo | cut -d: -f2 | xargs)
 GPU_INFO=$(lspci 2>/dev/null | grep -iE 'vga|3d|display' | cut -d: -f3 | xargs | head -n 1)
 [[ -z "$GPU_INFO" ]] && GPU_INFO="Unknown / Virtual Machine"
+
+HAS_NVIDIA=false
+if echo "$GPU_INFO" | grep -qi "nvidia"; then
+    HAS_NVIDIA=true
+    if [[ "$OS" == "fedora" ]]; then
+        PKGS+=("akmod-nvidia" "xorg-x11-drv-nvidia-cuda")
+    else
+        PKGS+=("nvidia-dkms" "nvidia-utils" "lib32-nvidia-utils" "linux-headers")
+    fi
+fi
 
 # ==============================================================================
 # Interactive TUI Functions
@@ -145,14 +155,17 @@ draw_header() {
  ██║██║   ╚████╔╝ ███████║██╔████╔██║██║██████╔╝██║   ██║
  ██║██║    ╚██╔╝  ██╔══██║██║╚██╔╝██║██║██╔══██╗██║   ██║
  ██║███████╗██║   ██║  ██║██║ ╚═╝ ██║██║██║  ██║╚██████╔╝
- ╚═╝╚══════╝╚═╝   ╚═╝  ╚═╝╚═╝    ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ 
+ ╚═╝╚══════╝╚═╝   ╚═╝  ╚═╝╚═╝    ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝  
 EOF
     printf "${RESET}\n"
     printf "\033[K${C_MAGENTA}=================================================================${RESET}\n"
-    printf "\033[K${BOLD} User:${RESET}             %s\n" "$USER_NAME"
-    printf "\033[K${BOLD} OS:  ${RESET}             %s\n" "$OS_NAME"
-    printf "\033[K${BOLD} CPU: ${RESET}             %s\n" "$CPU_INFO"
-    printf "\033[K${BOLD} GPU: ${RESET}             %s\n" "$GPU_INFO"
+    printf "\033[K${BOLD} User:${RESET}              %s\n" "$USER_NAME"
+    printf "\033[K${BOLD} OS:  ${RESET}              %s\n" "$OS_NAME"
+    printf "\033[K${BOLD} CPU: ${RESET}              %s\n" "$CPU_INFO"
+    printf "\033[K${BOLD} GPU: ${RESET}              %s\n" "$GPU_INFO"
+    if [ "$HAS_NVIDIA" = true ]; then
+        printf "\033[K${C_GREEN}${BOLD} -> NVIDIA Detected. Drivers queued.${RESET}\n"
+    fi
     printf "\033[K${C_MAGENTA}-----------------------------------------------------------------${RESET}\n"
     printf "\033[K${BOLD} Server Version:${RESET}  %s\n" "$DOTS_VERSION"
     printf "\033[K${BOLD} Local Version: ${RESET}  %s\n" "$LOCAL_VERSION"
@@ -427,7 +440,26 @@ if [[ "$OS" == "fedora" ]]; then
     done
 fi
 
-# --- 3. Repository Cloning & Wallpapers ---
+# --- 3. Display Manager Cleanup & SDDM Setup ---
+echo -e "\n${C_CYAN}[ INFO ]${RESET} Configuring Display Manager (SDDM)..."
+DMS=("lightdm" "gdm" "gdm3" "lxdm" "lxdm-gtk3" "ly")
+for dm in "${DMS[@]}"; do
+    if systemctl is-enabled "$dm.service" &>/dev/null || systemctl is-active "$dm.service" &>/dev/null; then
+        echo "  -> Disabling conflicting Display Manager: $dm"
+        sudo systemctl disable "$dm.service" --now 2>/dev/null || true
+    fi
+    # Uninstall conflicting display managers
+    if [[ "$OS" == "fedora" ]]; then
+        sudo dnf remove -y "$dm" > /dev/null 2>&1 || true
+    else
+        sudo pacman -Rns --noconfirm "$dm" > /dev/null 2>&1 || true
+    fi
+done
+
+sudo systemctl enable sddm.service -f
+printf "  -> SDDM enabled successfully %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
+
+# --- 4. Repository Cloning & Wallpapers ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Setting up Dotfiles Repository..."
 REPO_URL="https://github.com/ilyamiro/imperative-dots.git"
 CLONE_DIR="$HOME/.hyprland-dots"
@@ -462,7 +494,7 @@ fi
 rm -rf "$WALLPAPER_CLONE_DIR"
 printf "  -> Wallpapers installed to %-12s ${C_GREEN}[ OK ]${RESET}\n" "$WALLPAPER_DIR"
 
-# --- 4. Symlinks & Backups ---
+# --- 5. Copying Dotfiles & Backups ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Applying Configurations & Backing Up Old Ones..."
 TARGET_CONFIG_DIR="$HOME/.config"
 BACKUP_DIR="$HOME/.config-backup-$(date +%Y%m%d_%H%M%S)"
@@ -481,8 +513,8 @@ for folder in "${CONFIG_FOLDERS[@]}"; do
         if [ -e "$TARGET_PATH" ] || [ -L "$TARGET_PATH" ]; then
             mv "$TARGET_PATH" "$BACKUP_DIR/$folder"
         fi
-        ln -s "$SOURCE_PATH" "$TARGET_PATH"
-        printf "  -> Symlinked %-28s ${C_GREEN}[ OK ]${RESET}\n" "$folder"
+        cp -r "$SOURCE_PATH" "$TARGET_PATH"
+        printf "  -> Copied %-31s ${C_GREEN}[ OK ]${RESET}\n" "$folder"
     fi
 done
 
@@ -511,38 +543,50 @@ if [ -f "$REPO_DIR/utils/bin/cava" ]; then
 fi
 
 if [ "$INSTALL_ZSH" = true ] && command -v zsh &> /dev/null; then
-    ln -sf "$TARGET_CONFIG_DIR/zsh/.zshrc" "$HOME/.zshrc"
+    cp "$TARGET_CONFIG_DIR/zsh/.zshrc" "$HOME/.zshrc"
     chsh -s $(which zsh) "$USER"
     printf "  -> Zsh set as default shell %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
 fi
 
-# --- 5. Fonts ---
+# --- 6. Fonts ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Installing Fonts..."
 TARGET_FONTS_DIR="$HOME/.local/share/fonts"
 REPO_FONTS_DIR="$REPO_DIR/.local/share/fonts"
 mkdir -p "$TARGET_FONTS_DIR"
 
+# Copy any remaining local fonts (like JetBrainsMono)
 if [ -d "$REPO_FONTS_DIR" ]; then
-    # Copy all files explicitly, ensuring deep directories are captured
     cp -r "$REPO_FONTS_DIR/"* "$TARGET_FONTS_DIR/" 2>/dev/null || true
-    
-    # Explicit fallback copy for iosevka if it wasn't picked up properly
-    if [ -f "$REPO_FONTS_DIR/iosevka-nerd-font.ttf" ]; then
-        cp "$REPO_FONTS_DIR/iosevka-nerd-font.ttf" "$TARGET_FONTS_DIR/"
-    fi
-    
-    # Fix permissions so fontconfig can actually read them
-    find "$TARGET_FONTS_DIR" -type f -exec chmod 644 {} \;
-    find "$TARGET_FONTS_DIR" -type d -exec chmod 755 {} \;
-    
-    if command -v fc-cache &> /dev/null; then
-        # Force cache update verbosely so we ensure the system registers it
-        fc-cache -f "$TARGET_FONTS_DIR" > /dev/null 2>&1
-        printf "  -> Font cache updated %-21s ${C_GREEN}[ OK ]${RESET}\n" ""
-    fi
 fi
 
-# --- 6. Apply TUI User Preferences ---
+# Iosevka Nerd Font Pack Installation
+printf "  -> Creating temporary directory... \n"
+mkdir -p /tmp/iosevka-pack
+
+printf "  -> Downloading latest full Iosevka Nerd Font pack... \n"
+curl -fLo /tmp/iosevka-pack/Iosevka.zip https://github.com/ryanoasis/nerd-fonts/releases/latest/download/Iosevka.zip
+
+printf "  -> Extracting fonts... \n"
+unzip -q /tmp/iosevka-pack/Iosevka.zip -d /tmp/iosevka-pack/
+
+printf "  -> Installing fonts to IosevkaNerdFont directory... \n"
+mkdir -p "$TARGET_FONTS_DIR/IosevkaNerdFont"
+mv /tmp/iosevka-pack/*.ttf "$TARGET_FONTS_DIR/IosevkaNerdFont/"
+
+printf "  -> Cleaning up temporary files... \n"
+rm -rf /tmp/iosevka-pack
+
+# Fix permissions so fontconfig can actually read them
+find "$TARGET_FONTS_DIR" -type f -exec chmod 644 {} \; 2>/dev/null
+find "$TARGET_FONTS_DIR" -type d -exec chmod 755 {} \; 2>/dev/null
+
+if command -v fc-cache &> /dev/null; then
+    # Force cache update verbosely so we ensure the system registers it
+    fc-cache -f "$TARGET_FONTS_DIR" > /dev/null 2>&1
+    printf "  -> Font cache updated %-21s ${C_GREEN}[ OK ]${RESET}\n" ""
+fi
+
+# --- 7. Apply TUI User Preferences ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Writing User Preferences..."
 USER_PREFS_FILE="$TARGET_CONFIG_DIR/hypr/user_prefs.conf"
 mkdir -p "$(dirname "$USER_PREFS_FILE")"
@@ -557,7 +601,7 @@ if [ -n "$WALLPAPER_DIR" ]; then
 fi
 printf "  -> Preferences saved to user_prefs.conf ${C_GREEN}[ OK ]${RESET}\n"
 
-# --- 7. Adaptability Phase ---
+# --- 8. Adaptability Phase ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Adapting configurations to your specific system..."
 
 HYPR_CONF="$TARGET_CONFIG_DIR/hypr/hyprland.conf"
@@ -574,26 +618,31 @@ if [ -f "$HYPR_CONF" ]; then
 
     # 2. Inject Environment Variables for Quickshell
     sed -i "/^env = NIXOS_OZONE_WL,1/a env = WALLPAPER_DIR,$WALLPAPER_DIR\nenv = SCRIPT_DIR,$HOME/.config/hypr/scripts" "$HYPR_CONF"
+    
+    # 3. Inject Nvidia specific configurations if detected
+    if [ "$HAS_NVIDIA" = true ]; then
+        sed -i '/^env = NIXOS_OZONE_WL,1/a env = LIBVA_DRIVER_NAME,nvidia\nenv = XDG_SESSION_TYPE,wayland\nenv = GBM_BACKEND,nvidia-drm\nenv = __GLX_VENDOR_LIBRARY_NAME,nvidia\nenv = WLR_NO_HARDWARE_CURSORS,1' "$HYPR_CONF"
+    fi
 else
     echo -e "${C_RED}Warning: hyprland.conf not found at $HYPR_CONF${RESET}"
 fi
 
-# 3. Patch WallpaperPicker.qml dynamically
+# 4. Patch WallpaperPicker.qml dynamically
 if [ -f "$WP_QML" ]; then
     sed -i 's|Quickshell.env("HOME") + "/Images/Wallpapers"|Quickshell.env("WALLPAPER_DIR")|g' "$WP_QML"
 fi
 
-# 4. Rename all instances of swww to awww in quickshell/wallpaper files
+# 5. Rename all instances of swww to awww in quickshell/wallpaper files
 if [ -d "$WP_DIR" ]; then
     find "$WP_DIR" -type f -exec sed -i 's/swww/awww/g' {} +
 fi
 
-# 5. Remove Personal Diary Manager
+# 6. Remove Personal Diary Manager
 if [ -f "$DIARY_MGR" ]; then
     rm -f "$DIARY_MGR"
 fi
 
-# 6. Zsh Dynamism
+# 7. Zsh Dynamism
 if [ -f "$ZSH_RC" ]; then
     echo -e "\n# Dynamic System Paths" >> "$ZSH_RC"
     echo "export WALLPAPER_DIR=\"$WALLPAPER_DIR\"" >> "$ZSH_RC"
@@ -601,15 +650,26 @@ if [ -f "$ZSH_RC" ]; then
     sed -i "s/OS_LOGO_PLACEHOLDER/${OS}_small/g" "$ZSH_RC"
 fi
 
-# 7. Remove Schedule Directory
+# 8. Remove Schedule Directory
 SCHEDULE_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/calendar/schedule"
 if [ -d "$SCHEDULE_DIR" ]; then
     rm -rf "$SCHEDULE_DIR"
 fi
 
+# 9. Setup SDDM Theme and Config
+if [ -d "$REPO_DIR/.config/sddm/themes/matugen-minimal" ]; then
+    sudo mkdir -p /usr/share/sddm/themes/matugen-minimal
+    sudo cp -r "$REPO_DIR/.config/sddm/themes/matugen-minimal/"* /usr/share/sddm/themes/matugen-minimal/
+    sudo touch /usr/share/sddm/themes/matugen-minimal/Colors.qml
+    sudo chown $USER:$USER /usr/share/sddm/themes/matugen-minimal/Colors.qml
+    
+    echo -e "[Theme]\nCurrent=matugen-minimal" | sudo tee /etc/sddm.conf > /dev/null
+    printf "  -> SDDM Theme configured %-17s ${C_GREEN}[ OK ]${RESET}\n" ""
+fi
+
 printf "  -> System adaptations applied %-11s ${C_GREEN}[ OK ]${RESET}\n" ""
 
-# --- 8. Finalize Version Marker ---
+# --- 9. Finalize Version Marker ---
 echo "$DOTS_VERSION" > "$VERSION_FILE"
 printf "  -> Version marker updated (v%s) %-7s ${C_GREEN}[ OK ]${RESET}\n" "$DOTS_VERSION" ""
 
@@ -627,4 +687,5 @@ if [ ${#FAILED_PKGS[@]} -ne 0 ]; then
 fi
 
 echo -e "Old configurations backed up to: ${C_CYAN}$BACKUP_DIR${RESET}"
-echo -e "Please log out and log back in, or restart Hyprland to apply all changes.\n"
+echo -e "Please log out and log back in, or restart Hyprland to apply all changes."
+echo -e "-> Note: You must restart Quickshell (or log out and back in) for Qt to see the new font weights.\n"

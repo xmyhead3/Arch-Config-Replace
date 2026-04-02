@@ -48,16 +48,23 @@ require("lazy").setup({
   { "catppuccin/nvim", name = "catppuccin", priority = 1000 },
   { "nvim-tree/nvim-web-devicons" },
   
-  -- Treesitter uses 'main' and 'opts' to safely wait for installation
+  -- Treesitter with a pcall to prevent bootstrap crashing
   { 
     "nvim-treesitter/nvim-treesitter", 
     build = ":TSUpdate",
-    main = "nvim-treesitter.configs",
     opts = {
       highlight = { enable = true },
       indent = { enable = true },
       ensure_installed = { "c", "lua", "vim", "vimdoc", "query", "python", "javascript", "bash", "nix" }, 
-    }
+    },
+    config = function(_, opts)
+      local ok, treesitter_configs = pcall(require, "nvim-treesitter.configs")
+      if ok then
+        treesitter_configs.setup(opts)
+      else
+        vim.notify("Treesitter is installing... It will be ready on your next restart.", vim.log.levels.INFO)
+      end
+    end
   },
   
   { "nvim-lualine/lualine.nvim" },
@@ -184,7 +191,7 @@ require("lazy").setup({
     "neovim/nvim-lspconfig",
     config = function()
       local capabilities = require('cmp_nvim_lsp').default_capabilities()
-       
+        
       local function setup_server(server_name, config)
         local ok, server_config = pcall(require, "lspconfig.server_configurations." .. server_name)
         if not ok then return end
