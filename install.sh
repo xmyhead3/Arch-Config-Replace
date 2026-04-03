@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.0.3"
+DOTS_VERSION="1.0.4"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 mkdir -p "$(dirname "$VERSION_FILE")"
@@ -30,8 +30,6 @@ C_MAGENTA="\e[35m"
 # ==============================================================================
 # Global Variables & Initial States
 # ==============================================================================
-KB_SHORTCUT_DISPLAY="Not Set"
-KB_HYPR_CONF=""
 WALLPAPER_DIR="$HOME/Images/Wallpapers"
 WEATHER_API_KEY=""
 WEATHER_CITY_ID=""
@@ -55,24 +53,12 @@ ARCH_PKGS=(
     "hyprland" "weston" "kitty" "cava" "rofi-wayland" "swaync" 
     "pavucontrol" "alsa-utils" "awww" "networkmanager-dmenu-git"
     "wl-clipboard" "fd" "qt6-multimedia" "qt6-5compat" "ripgrep"
-    "cliphist" "jq" "socat" "pamixer" "brightnessctl" "acpi" "iw"
+    "cliphist" "jq" "socat" "inotify-tools" "pamixer" "libpulse" "brightnessctl" "acpi" "iw"
     "bluez" "bluez-utils" "libnotify" "networkmanager" "lm_sensors" "bc" 
     "pulseaudio-alsa" "ladspa" "imagemagick" "wget" "file" "git" "psmisc"
-    "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git" "unzip"
+    "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git" "unzip" "python-websockets" "qt6-websockets"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
     "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd-git" "nautilus"
-)
-
-FEDORA_PKGS=(
-    "hyprland" "kitty" "cava" "rofi-wayland" "swaync" 
-    "pavucontrol" "alsa-utils" "awww" "networkmanager-dmenu"
-    "wl-clipboard" "fd-find" "qt6-qtmultimedia" "qt6-qt5compat" "ripgrep"
-    "cliphist" "jq" "socat" "pamixer" "brightnessctl" "acpi" "iw"
-    "bluez" "bluez-tools" "libnotify" "NetworkManager" "lm_sensors" "bc" 
-    "pulseaudio-utils" "ladspa" "imagemagick" "wget" "file" "git" "psmisc"
-    "matugen" "ffmpeg" "fastfetch" "quickshell" "unzip"
-    "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
-    "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd" "nautilus"
 )
 
 # ==============================================================================
@@ -114,16 +100,8 @@ case $OS in
             PKG_MANAGER="sudo pacman -S --noconfirm --needed"
         fi
         ;;
-    fedora)
-        PKG_MANAGER="sudo dnf install -y"
-        PKGS=("${FEDORA_PKGS[@]}")
-        if ! command -v fzf &> /dev/null || ! command -v lspci &> /dev/null || ! command -v jq &> /dev/null || ! command -v curl &> /dev/null; then
-            echo -e "${C_CYAN}Bootstrapping TUI dependencies (fzf, pciutils, jq, curl)...${RESET}"
-            sudo dnf install -y fzf pciutils jq curl > /dev/null 2>&1
-        fi
-        ;;
     *)
-        echo -e "${C_RED}Unsupported OS ($OS). This script strictly supports Arch derivatives and Fedora.${RESET}"
+        echo -e "${C_RED}Unsupported OS ($OS). This script strictly supports Arch Linux and its derivatives.${RESET}"
         exit 1
         ;;
 esac
@@ -215,7 +193,7 @@ manage_packages() {
                     --header=" Press ESC or ENTER to return to menu "
                 ;;
             *"2"*)
-                echo -e "${C_CYAN}Enter package names to add (separated by space):${RESET}"
+                echo -e "${C_CYAN}Enter package names to add (separated by space) ${BOLD}[Leave empty and press ENTER to cancel]${RESET}${C_CYAN}:${RESET}"
                 read -r new_pkgs
                 if [ -n "$new_pkgs" ]; then
                     PKGS+=($new_pkgs)
@@ -315,43 +293,23 @@ manage_drivers() {
         if [[ "$choice" == *"Proprietary NVIDIA"* ]]; then
             DRIVER_CHOICE="NVIDIA Proprietary"
             HAS_NVIDIA_PROPRIETARY=true
-            if [[ "$OS" == "fedora" ]]; then
-                DRIVER_PKGS+=("akmod-nvidia" "xorg-x11-drv-nvidia-cuda" "egl-wayland")
-            else
-                DRIVER_PKGS+=("nvidia-dkms" "nvidia-utils" "lib32-nvidia-utils" "linux-headers" "egl-wayland")
-            fi
+            DRIVER_PKGS+=("nvidia-dkms" "nvidia-utils" "lib32-nvidia-utils" "linux-headers" "egl-wayland")
         
         elif [[ "$choice" == *"Nouveau"* ]]; then
             DRIVER_CHOICE="NVIDIA Nouveau"
-            if [[ "$OS" == "fedora" ]]; then
-                DRIVER_PKGS+=("mesa-dri-drivers" "mesa-vulkan-drivers")
-            else
-                DRIVER_PKGS+=("mesa" "vulkan-nouveau" "lib32-mesa")
-            fi
+            DRIVER_PKGS+=("mesa" "vulkan-nouveau" "lib32-mesa")
 
         elif [[ "$choice" == *"AMD"* ]]; then
             DRIVER_CHOICE="AMD Drivers"
-            if [[ "$OS" == "fedora" ]]; then
-                DRIVER_PKGS+=("mesa-dri-drivers" "mesa-vulkan-drivers" "vulkan-radeon" "rocm-opencl")
-            else
-                DRIVER_PKGS+=("mesa" "vulkan-radeon" "lib32-vulkan-radeon" "lib32-mesa" "xf86-video-amdgpu")
-            fi
+            DRIVER_PKGS+=("mesa" "vulkan-radeon" "lib32-vulkan-radeon" "lib32-mesa" "xf86-video-amdgpu")
 
         elif [[ "$choice" == *"Intel"* ]]; then
             DRIVER_CHOICE="Intel Drivers"
-            if [[ "$OS" == "fedora" ]]; then
-                DRIVER_PKGS+=("mesa-dri-drivers" "mesa-vulkan-drivers" "vulkan-intel" "intel-media-driver")
-            else
-                DRIVER_PKGS+=("mesa" "vulkan-intel" "lib32-vulkan-intel" "lib32-mesa" "intel-media-driver")
-            fi
+            DRIVER_PKGS+=("mesa" "vulkan-intel" "lib32-vulkan-intel" "lib32-mesa" "intel-media-driver")
 
         elif [[ "$choice" == *"Generic"* ]]; then
             DRIVER_CHOICE="Generic / VM"
-            if [[ "$OS" == "fedora" ]]; then
-                DRIVER_PKGS+=("mesa-dri-drivers")
-            else
-                DRIVER_PKGS+=("mesa" "lib32-mesa")
-            fi
+            DRIVER_PKGS+=("mesa" "lib32-mesa")
 
         elif [[ "$choice" == *"Skip"* ]]; then
             DRIVER_CHOICE="Skipped"
@@ -364,27 +322,46 @@ manage_drivers() {
     done
 }
 
-set_keyboard_shortcut() {
+show_overview() {
+    clear
     draw_header
-    local choice
-    choice=$(echo -e "Alt + Shift\nSuper + Space\nCtrl + Shift\nCaps Lock" | fzf \
-        --layout=reverse \
-        --border=rounded \
-        --margin=1,2 \
-        --height=15 \
-        --prompt=" Select Layout Toggle Shortcut > " \
-        --pointer=">" \
-        --header=" Select the keybind to switch languages ")
-    
-    if [[ -n "$choice" ]]; then
-        KB_SHORTCUT_DISPLAY="$choice"
-        case "$choice" in
-            "Alt + Shift") KB_HYPR_CONF="grp:alt_shift_toggle" ;;
-            "Super + Space") KB_HYPR_CONF="grp:win_space_toggle" ;;
-            "Ctrl + Shift") KB_HYPR_CONF="grp:ctrl_shift_toggle" ;;
-            "Caps Lock") KB_HYPR_CONF="grp:caps_toggle" ;;
-        esac
-    fi
+    echo -e "${BOLD}${C_MAGENTA}=== System Overview & Keybinds ===${RESET}\n"
+    echo -e "This configuration is an adaptation of the famous ${BOLD}${C_CYAN}ilyamiro/nixos-configuration${RESET} setup."
+    echo -e "Here are the core keybindings to navigate your new system once installed:\n"
+
+    echo -e "${BOLD}${C_BLUE}--- Applications ---${RESET}"
+    echo -e "  ${BOLD}SUPER + RETURN${RESET}   : Open Terminal (kitty)"
+    echo -e "  ${BOLD}SUPER + D${RESET}        : Open App Launcher (rofi)"
+    echo -e "  ${BOLD}SUPER + F${RESET}        : Open Browser (Firefox)"
+    echo -e "  ${BOLD}SUPER + E${RESET}        : Open File Manager (nautilus)"
+    echo -e "  ${BOLD}SUPER + O${RESET}        : Open Obsidian"
+    echo -e "  ${BOLD}SUPER + T${RESET}        : Open Telegram"
+    echo -e "  ${BOLD}SUPER + C${RESET}        : Clipboard History (rofi)\n"
+
+    echo -e "${BOLD}${C_BLUE}--- Quickshell Widgets ---${RESET}"
+    echo -e "  ${BOLD}SUPER + M${RESET}        : Toggle Monitors"
+    echo -e "  ${BOLD}SUPER + Q${RESET}        : Toggle Music"
+    echo -e "  ${BOLD}SUPER + B${RESET}        : Toggle Battery"
+    echo -e "  ${BOLD}SUPER + W${RESET}        : Toggle Wallpaper"
+    echo -e "  ${BOLD}SUPER + S${RESET}        : Toggle Calendar"
+    echo -e "  ${BOLD}SUPER + N${RESET}        : Toggle Network"
+    echo -e "  ${BOLD}SUPER + SHIFT + T${RESET}: Toggle FocusTime"
+    echo -e "  ${BOLD}SUPER + SHIFT + S${RESET}: Toggle Stewart\n"
+
+    echo -e "${BOLD}${C_BLUE}--- Window Management ---${RESET}"
+    echo -e "  ${BOLD}ALT + F4${RESET}         : Close Active Window / Widget"
+    echo -e "  ${BOLD}SUPER + SHIFT + F${RESET}: Toggle Floating"
+    echo -e "  ${BOLD}SUPER + Arrows${RESET}   : Move Focus"
+    echo -e "  ${BOLD}SUPER + CTRL + Arr${RESET}: Move Window\n"
+
+    echo -e "${BOLD}${C_BLUE}--- System Controls ---${RESET}"
+    echo -e "  ${BOLD}SUPER + L${RESET}        : Lock Screen"
+    echo -e "  ${BOLD}Print Screen${RESET}     : Screenshot"
+    echo -e "  ${BOLD}SHIFT + Print${RESET}    : Screenshot (Edit)"
+    echo -e "  ${BOLD}ALT + SHIFT${RESET}      : Switch Keyboard Layout\n"
+
+    echo -e "${BOLD}${C_GREEN}Press ENTER to return to the Main Menu...${RESET}"
+    read -r
 }
 
 set_weather_api() {
@@ -397,7 +374,8 @@ set_weather_api() {
         echo -e "  1. Visit ${C_BLUE}https://openweathermap.org/${RESET}"
         echo -e "  2. Create a free account and log in."
         echo -e "  3. Click your profile name -> 'My API keys'."
-        echo -e "  4. Generate a new key and paste it below.\n"
+        echo -e "  4. Generate a new key and paste it below."
+        echo -e "  ${BOLD}${C_YELLOW}Note: New API keys may take a couple of hours to activate on OpenWeather's side.${RESET}\n"
         
         read -p "Enter your OpenWeather API Key (or press Enter to skip): " input_key
         
@@ -569,7 +547,7 @@ while true; do
 
     # Build the color-coded menu string
     MENU_ITEMS="1. ${C_GREEN}Manage Packages${RESET} [${#PKGS[@]} queued]\n"
-    MENU_ITEMS+="2. ${C_CYAN}Set Keyboard Switcher${RESET} [${KB_SHORTCUT_DISPLAY}]\n"
+    MENU_ITEMS+="2. ${C_CYAN}Overview & Keybinds${RESET}\n"
     MENU_ITEMS+="3. ${C_YELLOW}Set Weather API Key${RESET} [${API_DISPLAY}]\n"
     MENU_ITEMS+="4. ${C_RED}[ DRIVERS ] Setup${RESET} [${DRIVER_CHOICE}]\n"
     MENU_ITEMS+="5. ${BOLD}${C_MAGENTA}START INSTALLATION${RESET}\n"
@@ -588,7 +566,7 @@ while true; do
 
     case "$MENU_OPTION" in
         *"1"*) manage_packages ;;
-        *"2"*) set_keyboard_shortcut ;;
+        *"2"*) show_overview ;;
         *"3"*) set_weather_api ;;
         *"4"*) manage_drivers ;;
         *"5"*) prompt_optional_features; break ;;
@@ -608,14 +586,21 @@ echo -e "${BOLD}${C_BLUE}::${RESET} ${BOLD}Starting Installation Process...${RES
 echo -e "${C_CYAN}[ INFO ]${RESET} Requesting sudo privileges for installation..."
 sudo -v
 
+# --- 0. Resolve Package Conflicts ---
+echo -e "\n${C_CYAN}[ INFO ]${RESET} Resolving potential package conflicts for git builds..."
+CONFLICTING_PKGS=("swayosd" "quickshell" "matugen")
+for cpkg in "${CONFLICTING_PKGS[@]}"; do
+    if pacman -Qq | grep -qx "$cpkg"; then
+        echo -e "  -> ${C_YELLOW}Removing conflicting non-git package '$cpkg'...${RESET}"
+        sudo pacman -Rdd --noconfirm "$cpkg" > /dev/null 2>&1
+    fi
+done
+
 # Combine Base Packages with chosen Driver Packages
 ALL_PKGS=("${PKGS[@]}" "${DRIVER_PKGS[@]}")
 
 # --- 1. Install Dependencies & Drivers ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Installing System Packages & Drivers...\n"
-if [[ "$OS" == "fedora" ]]; then
-    sudo dnf copr enable -y errornointernet/quickshell > /dev/null 2>&1 || true
-fi
 
 for pkg in "${ALL_PKGS[@]}"; do
     # Skip empty entries if any
@@ -625,22 +610,13 @@ for pkg in "${ALL_PKGS[@]}"; do
     echo -e "${C_BLUE}::${RESET} ${BOLD}Installing ${pkg}...${RESET}"
     echo -e "${C_CYAN}=================================================================${RESET}"
     
-    if [[ "$OS" == "fedora" ]]; then
-        if $PKG_MANAGER "$pkg"; then
-            echo -e "\n${C_GREEN}[ OK ] Successfully installed ${pkg}${RESET}"
-        else
-            echo -e "\n${C_RED}[ FAILED ] Failed to install ${pkg}${RESET}"
-            FAILED_PKGS+=("$pkg")
-        fi
+    # Arch: Pipe 'yes ""' (Enter keystrokes) to automatically choose the default provider (1)
+    # Limit CARGO_BUILD_JOBS to prevent OOM errors during heavy Rust compilations (like swayosd)
+    if yes "" | env CARGO_BUILD_JOBS=2 $PKG_MANAGER "$pkg"; then
+        echo -e "\n${C_GREEN}[ OK ] Successfully installed ${pkg}${RESET}"
     else
-        # Arch: Pipe 'yes ""' (Enter keystrokes) to automatically choose the default provider (1)
-        # Limit CARGO_BUILD_JOBS to prevent OOM errors during heavy Rust compilations (like swayosd)
-        if yes "" | env CARGO_BUILD_JOBS=2 $PKG_MANAGER "$pkg"; then
-            echo -e "\n${C_GREEN}[ OK ] Successfully installed ${pkg}${RESET}"
-        else
-            echo -e "\n${C_RED}[ FAILED ] Failed to install ${pkg}${RESET}"
-            FAILED_PKGS+=("$pkg")
-        fi
+        echo -e "\n${C_RED}[ FAILED ] Failed to install ${pkg}${RESET}"
+        FAILED_PKGS+=("$pkg")
     fi
     sleep 0.5
 done
@@ -655,71 +631,40 @@ if [ "$HAS_NVIDIA_PROPRIETARY" = true ]; then
     
     # 2. Kernel Parameters (modeset=1 fbdev=1 are required to avoid black screens)
     echo -e "  -> Injecting kernel parameters (nvidia-drm.modeset=1 nvidia-drm.fbdev=1)..."
-    if [[ "$OS" == "fedora" ]]; then
-        sudo grubby --update-kernel=ALL --args="nvidia-drm.modeset=1 nvidia-drm.fbdev=1"
-        printf "  -> Fedora kernel parameters configured %-5s ${C_GREEN}[ OK ]${RESET}\n" ""
-    else
-        # Arch based - Check for GRUB
-        if [ -f /etc/default/grub ]; then
-            if ! grep -q "nvidia-drm.modeset=1" /etc/default/grub; then
-                sudo sed -i 's/\(GRUB_CMDLINE_LINUX_DEFAULT=".*\)"/\1 nvidia-drm.modeset=1 nvidia-drm.fbdev=1"/' /etc/default/grub
-                sudo grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
-                printf "  -> GRUB parameters updated %-15s ${C_GREEN}[ OK ]${RESET}\n" ""
+
+    # Arch based - Check for GRUB
+    if [ -f /etc/default/grub ]; then
+        if ! grep -q "nvidia-drm.modeset=1" /etc/default/grub; then
+            sudo sed -i 's/\(GRUB_CMDLINE_LINUX_DEFAULT=".*\)"/\1 nvidia-drm.modeset=1 nvidia-drm.fbdev=1"/' /etc/default/grub
+            sudo grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
+            printf "  -> GRUB parameters updated %-15s ${C_GREEN}[ OK ]${RESET}\n" ""
+        fi
+    fi
+    # Arch based - Check for systemd-boot
+    if command -v bootctl &> /dev/null && [ -d /boot/loader/entries ]; then
+        for entry in /boot/loader/entries/*.conf; do
+            if ! grep -q "nvidia-drm.modeset=1" "$entry"; then
+                sudo sed -i '/^options/ s/$/ nvidia-drm.modeset=1 nvidia-drm.fbdev=1/' "$entry"
             fi
+        done
+        printf "  -> Systemd-boot parameters updated %-7s ${C_GREEN}[ OK ]${RESET}\n" ""
+    fi
+    
+    # 3. Rebuild initramfs to load Nvidia modules early
+    echo -e "  -> Rebuilding initramfs (mkinitcpio) for early module loading..."
+    if [ -f /etc/mkinitcpio.conf ]; then
+        # Inject modules if not present
+        if ! grep -q "nvidia nvidia_modeset nvidia_uvm nvidia_drm" /etc/mkinitcpio.conf; then
+            sudo sed -i 's/^MODULES=(/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
+            # Remove kms from HOOKS if it exists since nvidia does modesetting directly
+            sudo sed -i 's/\b kms\b//g' /etc/mkinitcpio.conf
         fi
-        # Arch based - Check for systemd-boot
-        if command -v bootctl &> /dev/null && [ -d /boot/loader/entries ]; then
-            for entry in /boot/loader/entries/*.conf; do
-                if ! grep -q "nvidia-drm.modeset=1" "$entry"; then
-                    sudo sed -i '/^options/ s/$/ nvidia-drm.modeset=1 nvidia-drm.fbdev=1/' "$entry"
-                fi
-            done
-            printf "  -> Systemd-boot parameters updated %-7s ${C_GREEN}[ OK ]${RESET}\n" ""
-        fi
-        
-        # 3. Rebuild initramfs to load Nvidia modules early
-        echo -e "  -> Rebuilding initramfs (mkinitcpio) for early module loading..."
-        if [ -f /etc/mkinitcpio.conf ]; then
-            # Inject modules if not present
-            if ! grep -q "nvidia nvidia_modeset nvidia_uvm nvidia_drm" /etc/mkinitcpio.conf; then
-                sudo sed -i 's/^MODULES=(/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
-                # Remove kms from HOOKS if it exists since nvidia does modesetting directly
-                sudo sed -i 's/\b kms\b//g' /etc/mkinitcpio.conf
-            fi
-            sudo mkinitcpio -P >/dev/null 2>&1
-            printf "  -> Mkinitcpio rebuild successful %-9s ${C_GREEN}[ OK ]${RESET}\n" ""
-        fi
+        sudo mkinitcpio -P >/dev/null 2>&1
+        printf "  -> Mkinitcpio rebuild successful %-9s ${C_GREEN}[ OK ]${RESET}\n" ""
     fi
 fi
 
-# --- 2. Fallback Binaries ---
-if [[ "$OS" == "fedora" ]]; then
-    echo -e "\n${C_CYAN}[ INFO ]${RESET} Installing Fallback Binaries for Fedora..."
-    export PATH="$HOME/.local/bin:$PATH"
-    mkdir -p "$HOME/.local/bin"
-    
-    for tool in "swww:LGFae/swww" "matugen:InioX/matugen"; do
-        bin_name="${tool%%:*}"
-        repo="${tool##*:}"
-        if ! command -v "$bin_name" &> /dev/null; then
-            printf "  -> Fetching %-30s " "$bin_name"
-            url=$(curl -s "https://api.github.com/repos/$repo/releases/latest" | grep "browser_download_url" | grep "x86_64" | grep "linux" | grep -v "musl" | cut -d '"' -f 4 | head -n 1)
-            if [ -n "$url" ]; then
-                curl -sL "$url" -o "/tmp/$bin_name.tar.gz"
-                tar -xzf "/tmp/$bin_name.tar.gz" -C "/tmp"
-                find "/tmp" -type f -name "$bin_name" -exec mv {} "$HOME/.local/bin/" \;
-                [[ "$bin_name" == "swww" ]] && find "/tmp" -type f -name "swww-daemon" -exec mv {} "$HOME/.local/bin/" \; 2>/dev/null
-                chmod +x "$HOME/.local/bin/"*
-                printf "${C_GREEN}[ OK ]${RESET}\n"
-            else
-                printf "${C_RED}[ FAILED ]${RESET}\n"
-                FAILED_PKGS+=("$bin_name (Binary)")
-            fi
-        fi
-    done
-fi
-
-# --- 3. Display Manager Cleanup & SDDM Setup ---
+# --- 2. Display Manager Cleanup & SDDM Setup ---
 if [[ "$INSTALL_SDDM" == true || "$SETUP_SDDM_THEME" == true || "$REPLACE_DM" == true ]]; then
     echo -e "\n${C_CYAN}[ INFO ]${RESET} Configuring Display Manager..."
 fi
@@ -731,11 +676,7 @@ if [[ "$REPLACE_DM" == true ]]; then
         if systemctl is-enabled "$dm.service" &>/dev/null || systemctl is-active "$dm.service" &>/dev/null; then
             echo "  -> Disabling conflicting Display Manager: $dm"
             sudo systemctl disable "$dm.service" --now 2>/dev/null || true
-            if [[ "$OS" == "fedora" ]]; then
-                sudo dnf remove -y "$dm" > /dev/null 2>&1 || true
-            else
-                sudo pacman -Rns --noconfirm "$dm" > /dev/null 2>&1 || true
-            fi
+            sudo pacman -Rns --noconfirm "$dm" > /dev/null 2>&1 || true
         fi
     done
 fi
@@ -745,7 +686,7 @@ if [[ "$INSTALL_SDDM" == true ]]; then
     printf "  -> SDDM enabled successfully %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
 fi
 
-# --- 4. Repository Cloning & Wallpapers ---
+# --- 3. Repository Cloning & Wallpapers ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Setting up Dotfiles Repository..."
 REPO_URL="https://github.com/ilyamiro/imperative-dots.git"
 CLONE_DIR="$HOME/.hyprland-dots"
@@ -780,7 +721,7 @@ fi
 rm -rf "$WALLPAPER_CLONE_DIR"
 printf "  -> Wallpapers installed to %-12s ${C_GREEN}[ OK ]${RESET}\n" "$WALLPAPER_DIR"
 
-# --- 5. Copying Dotfiles & Backups ---
+# --- 4. Copying Dotfiles & Backups ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Applying Configurations & Backing Up Old Ones..."
 TARGET_CONFIG_DIR="$HOME/.config"
 BACKUP_DIR="$HOME/.config-backup-$(date +%Y%m%d_%H%M%S)"
@@ -828,12 +769,29 @@ if [ -f "$REPO_DIR/utils/bin/cava" ]; then
 fi
 
 if [ "$INSTALL_ZSH" = true ] && command -v zsh &> /dev/null; then
+    if [ -f "$HOME/.zshrc" ]; then
+        echo -e "  -> Extracting existing aliases from ~/.zshrc..."
+        mkdir -p "$TARGET_CONFIG_DIR/zsh"
+        grep "^alias " "$HOME/.zshrc" > "$TARGET_CONFIG_DIR/zsh/user_aliases.zsh" || true
+        if [ -s "$TARGET_CONFIG_DIR/zsh/user_aliases.zsh" ]; then
+            printf "  -> Custom aliases backed up %-16s ${C_GREEN}[ OK ]${RESET}\n" ""
+        else
+            rm -f "$TARGET_CONFIG_DIR/zsh/user_aliases.zsh"
+        fi
+    fi
+
     cp "$TARGET_CONFIG_DIR/zsh/.zshrc" "$HOME/.zshrc"
     chsh -s $(which zsh) "$USER"
+
+    if [ -f "$TARGET_CONFIG_DIR/zsh/user_aliases.zsh" ]; then
+        echo -e "\n# Load User Aliases" >> "$HOME/.zshrc"
+        echo "source $TARGET_CONFIG_DIR/zsh/user_aliases.zsh" >> "$HOME/.zshrc"
+    fi
+
     printf "  -> Zsh set as default shell %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
 fi
 
-# --- 6. Fonts ---
+# --- 5. Fonts ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Installing Fonts..."
 TARGET_FONTS_DIR="$HOME/.local/share/fonts"
 REPO_FONTS_DIR="$REPO_DIR/.local/share/fonts"
@@ -873,22 +831,18 @@ if command -v fc-cache &> /dev/null; then
     printf "  -> Font cache updated %-21s ${C_GREEN}[ OK ]${RESET}\n" ""
 fi
 
-# --- 7. Apply TUI User Preferences ---
+# --- 6. Apply TUI User Preferences ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Writing User Preferences..."
 USER_PREFS_FILE="$TARGET_CONFIG_DIR/hypr/user_prefs.conf"
 mkdir -p "$(dirname "$USER_PREFS_FILE")"
 echo "# Auto-generated by install script" > "$USER_PREFS_FILE"
-
-if [ -n "$KB_HYPR_CONF" ]; then
-    echo "input { kb_options = $KB_HYPR_CONF }" >> "$USER_PREFS_FILE"
-fi
 
 if [ -n "$WALLPAPER_DIR" ]; then
     echo "\$wallpaper_dir = $WALLPAPER_DIR" >> "$USER_PREFS_FILE"
 fi
 printf "  -> Preferences saved to user_prefs.conf ${C_GREEN}[ OK ]${RESET}\n"
 
-# --- 8. Adaptability Phase ---
+# --- 7. Adaptability Phase ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Adapting configurations to your specific system..."
 
 HYPR_CONF="$TARGET_CONFIG_DIR/hypr/hyprland.conf"
@@ -896,7 +850,7 @@ ZSH_RC="$HOME/.zshrc"
 WP_QML="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/wallpaper/WallpaperPicker.qml"
 WP_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/wallpaper"
 
-# -> NEW: Desktop/Laptop Battery Adaptability <-
+# -> Desktop/Laptop Battery Adaptability <-
 QS_BAT_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/battery"
 echo -e "  -> Checking chassis for battery presence..."
 if ls /sys/class/power_supply/BAT* 1> /dev/null 2>&1; then
@@ -980,7 +934,7 @@ EOF
     fi
 fi
 
-# --- 9. Finalize Version Marker ---
+# --- 8. Finalize Version Marker ---
 echo "$DOTS_VERSION" > "$VERSION_FILE"
 printf "  -> Version marker updated (v%s) %-7s ${C_GREEN}[ OK ]${RESET}\n" "$DOTS_VERSION" ""
 

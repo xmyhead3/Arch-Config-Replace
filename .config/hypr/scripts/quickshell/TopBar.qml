@@ -95,17 +95,20 @@ PanelWindow {
     }
 
     // ==========================================
-    // DATA FETCHING (PROCESSES & TIMERS)
+    // DATA FETCHING (EVENT-DRIVEN WAITERS)
     // ==========================================
 
+    // Workspaces --------------------------------
+    // 1. The continuous background daemon (writes to tmp file instantly via socat)
     Process {
         id: wsDaemon
         command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/workspaces.sh > /tmp/qs_workspaces.json"]
         running: true
     }
 
+    // 2. The lightweight reader
     Process {
-        id: wsPoller
+        id: wsReader
         command: ["bash", "-c", "tail -n 1 /tmp/qs_workspaces.json 2>/dev/null"]
         stdout: StdioCollector {
             onStreamFinished: {
@@ -133,8 +136,16 @@ PanelWindow {
             }
         }
     }
-    Timer { interval: 100; running: true; repeat: true; onTriggered: wsPoller.running = true }
 
+    // 3. Ultra-fast 50ms loop. Zero complex logic overhead, feels completely instant.
+    Timer { 
+        interval: 50 
+        running: true 
+        repeat: true 
+        onTriggered: wsReader.running = true 
+    }
+
+    // Music -------------------------------------
     Process {
         id: musicPoller
         command: ["bash", "-c", "cat /tmp/music_info.json 2>/dev/null || bash ~/.config/hypr/scripts/quickshell/music/music_info.sh"]
@@ -144,69 +155,66 @@ PanelWindow {
                 if (txt !== "") {
                     try { barWindow.musicData = JSON.parse(txt); } catch(e) {}
                 }
+                musicWaiter.running = true;
             }
         }
     }
-    Timer { interval: 500; running: true; repeat: true; onTriggered: musicPoller.running = true }
-
-    // SLOW POLLER: Battery, WiFi, Bluetooth (Updates every 5 seconds)
     Process {
-        id: slowSysPoller
-        command: ["bash", "-c", `
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --wifi-status)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --wifi-icon)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --wifi-ssid)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --bt-status)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --bt-icon)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --bt-connected)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --battery-percent)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --battery-icon)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --battery-status)"
-        `]
+        id: musicWaiter
+        command: ["bash", "-c", "inotifywait -qq -e modify /tmp/music_info.json 2>/dev/null || sleep 2"]
+        stdout: StdioCollector {
+            onStreamFinished: musicPoller.running = true
+        }
+    }
+    Timer { interval: 500; running: true; repeat: false; onTriggered: musicPoller.running = true }
+
+    // Unified System Info ------------------------
+    Process {
+        id: sysPoller
+        command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/sys_info.sh"]
         stdout: StdioCollector {
             onStreamFinished: {
-                let lines = this.text.trim().split("\n");
-                if (lines.length >= 9) {
-                    barWindow.wifiStatus = lines[0];
-                    barWindow.wifiIcon = lines[1];
-                    barWindow.wifiSsid = lines[2];
-                    barWindow.btStatus = lines[3];
-                    barWindow.btIcon = lines[4];
-                    barWindow.btDevice = lines[5];
-                    barWindow.batPercent = lines[6];
-                    barWindow.batIcon = lines[7];
-                    barWindow.batStatus = lines[8];
+                let txt = this.text.trim();
+                if (txt !== "") {
+                    try {
+                        let data = JSON.parse(txt);
+                        barWindow.wifiStatus = data.wifi.status;
+                        barWindow.wifiIcon = data.wifi.icon;
+                        barWindow.wifiSsid = data.wifi.ssid;
+
+                        barWindow.btStatus = data.bt.status;
+                        barWindow.btIcon = data.bt.icon;
+                        barWindow.btDevice = data.bt.connected;
+
+                        barWindow.volPercent = data.audio.volume.toString() + "%";
+                        barWindow.volIcon = data.audio.icon;
+                        barWindow.isMuted = (data.audio.is_muted === "true");
+
+                        barWindow.batPercent = data.battery.percent.toString() + "%";
+                        barWindow.batIcon = data.battery.icon;
+                        barWindow.batStatus = data.battery.status;
+
+                        barWindow.kbLayout = data.keyboard.layout;
+
+                        barWindow.sysPollerLoaded = true;
+                        barWindow.fastPollerLoaded = true;
+                    } catch(e) {}
                 }
-                barWindow.sysPollerLoaded = true; // Signal that slow data has arrived
+                sysWaiter.running = true;
             }
         }
     }
-    Timer { interval: 1500; running: true; repeat: true; triggeredOnStart: true; onTriggered: slowSysPoller.running = true }
-
-    // FAST POLLER: Volume and Layout (Updates every 150ms for instant feedback)
     Process {
-        id: fastSysPoller
-        command: ["bash", "-c", `
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --volume)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --volume-icon)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --kb-layout)"
-            echo "$(~/.config/hypr/scripts/quickshell/sys_info.sh --is-muted)"
-        `]
+        id: sysWaiter
+        command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/sys_waiter.sh"]
         stdout: StdioCollector {
-            onStreamFinished: {
-                let lines = this.text.trim().split("\n");
-                if (lines.length >= 4) {
-                    barWindow.volPercent = lines[0];
-                    barWindow.volIcon = lines[1];
-                    barWindow.kbLayout = lines[2];
-                    barWindow.isMuted = (lines[3].toLowerCase() === "true");
-                }
-                barWindow.fastPollerLoaded = true; // Gatekeeper release
-            }
+            onStreamFinished: sysPoller.running = true
         }
     }
-    Timer { interval: 150; running: true; repeat: true; triggeredOnStart: true; onTriggered: fastSysPoller.running = true }
+    // Kickoff the initial fetch
+    Timer { interval: 100; running: true; repeat: false; onTriggered: sysPoller.running = true }
 
+    // Weather remains a slow poll since it fetches from web
     Process {
         id: weatherPoller
         command: ["bash", "-c", `
@@ -432,9 +440,9 @@ PanelWindow {
                         }
                     }
                 }
-	    }            
+        }            
 
-	    // Media Player 
+        // Media Player 
 
             Rectangle {
                 id: mediaBox
@@ -827,12 +835,10 @@ PanelWindow {
                         transform: Translate { y: parent.initAnimTrigger ? 0 : 15; Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
                         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
-                        // FIXED: Collapse spacing and hide text until slow data is ready to prevent looking "turned off"
                         RowLayout { id: wifiLayoutRow; anchors.centerIn: parent; spacing: wifiText.visible ? 8 : 0
                             Text { text: barWindow.wifiIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: 16; color: barWindow.isWifiOn ? mocha.base : mocha.subtext0 }
                             Text { 
                                 id: wifiText
-                                // Wait for sysPollerLoaded before evaluating text so it doesn't default to "Off"
                                 text: barWindow.sysPollerLoaded ? (barWindow.isWifiOn ? (barWindow.wifiSsid !== "" ? barWindow.wifiSsid : "On") : "Off") : ""
                                 visible: text !== ""
                                 font.family: "JetBrains Mono"; font.pixelSize: 13; font.weight: Font.Black; 
@@ -877,7 +883,6 @@ PanelWindow {
                         transform: Translate { y: parent.initAnimTrigger ? 0 : 15; Behavior on y { NumberAnimation { duration: 500; easing.type: Easing.OutBack } } }
                         Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
 
-                        // FIXED: Collapse spacing when there is no text so it initializes as a clean square
                         RowLayout { id: btLayoutRow; anchors.centerIn: parent; spacing: btText.visible ? 8 : 0
                             Text { text: barWindow.btIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: 16; color: barWindow.isBtOn ? mocha.base : mocha.subtext0 }
                             Text { 

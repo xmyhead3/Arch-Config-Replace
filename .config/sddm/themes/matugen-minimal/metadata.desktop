@@ -1,7 +1,6 @@
 [SddmGreeterTheme]
 Name=Matugen Minimal
 Description=A minimal, blurred SDDM theme synced with Matugen
-Author=Gemini
 Copyright=2026
 License=MIT
 Type=sddm-theme
