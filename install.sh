@@ -55,7 +55,7 @@ ARCH_PKGS=(
     "wl-clipboard" "fd" "qt6-multimedia" "qt6-5compat" "ripgrep"
     "cliphist" "jq" "socat" "inotify-tools" "pamixer" "brightnessctl" "acpi" "iw"
     "bluez" "bluez-utils" "libnotify" "networkmanager" "lm_sensors" "bc" 
-    "pipewire" "wireplumber" "pipewire-pulse" "pipewire-alsa" "pipewire-jack"
+    "pipewire" "wireplumber" "pipewire-pulse" "pipewire-alsa" "pipewire-jack" "libpulse" "python"
     "imagemagick" "wget" "file" "git" "psmisc"
     "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git" "unzip" "python-websockets" "qt6-websockets"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
@@ -778,7 +778,10 @@ if [ -f "$REPO_DIR/utils/bin/cava" ]; then
 fi
 
 # Enable Pipewire natively for the user environment
-systemctl --user enable --now pipewire wireplumber pipewire-pulse 2>/dev/null || true
+# Using --global prevents silent failures when testers run this script from a TTY (without an active DBUS session)
+sudo systemctl --global enable pipewire wireplumber pipewire-pulse 2>/dev/null || true
+# Attempt to start it locally if DBUS is available (fails silently in TTY, which is fine since --global catches the next login)
+systemctl --user start pipewire wireplumber pipewire-pulse 2>/dev/null || true
 
 if [ "$INSTALL_ZSH" = true ] && command -v zsh &> /dev/null; then
     if [ -f "$HOME/.zshrc" ]; then

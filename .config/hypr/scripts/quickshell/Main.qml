@@ -3,6 +3,7 @@ import QtQuick.Window
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import "WindowRegistry.js" as Registry
 
 FloatingWindow {
     id: masterWindow
@@ -44,41 +45,10 @@ FloatingWindow {
     property real animH: 1
 
     function getLayout(name) {
-        let mx = masterWindow.activeMx;
-        let my = masterWindow.activeMy;
-        let mw = masterWindow.activeMw;
-        let mh = masterWindow.activeMh;
-
-        let base = {
-            // Right-aligned: pinned 20px from the right edge dynamically
-            "battery":   { w: 480, h: 760, rx: mw - 500, ry: 70, comp: "battery/BatteryPopup.qml" },
-            
-            // Centered horizontally dynamically based on current screen width
-            "calendar":  { w: 1450, h: 750, rx: Math.floor((mw/2)-(1450/2)), ry: 70, comp: "calendar/CalendarPopup.qml" },
-            
-            // Left-aligned: pinned 12px from the left edge
-            "music":     { w: 700, h: 620, rx: 12, ry: 70, comp: "music/MusicPopup.qml" },
-            
-            // Right-aligned: pinned 20px from the right edge dynamically
-            "network":   { w: 900, h: 700, rx: mw - 920, ry: 70, comp: "network/NetworkPopup.qml" },
-            
-            // Centered both horizontally and vertically
-            "stewart":   { w: 800, h: 600, rx: Math.floor((mw/2)-(800/2)), ry: Math.floor((mh/2)-(600/2)), comp: "stewart/stewart.qml" },
-            "monitors":  { w: 850, h: 580, rx: Math.floor((mw/2)-(850/2)), ry: Math.floor((mh/2)-(580/2)), comp: "monitors/MonitorPopup.qml" },
-            "focustime": { w: 900, h: 720, rx: Math.floor((mw/2)-(900/2)), ry: Math.floor((mh/2)-(720/2)), comp: "focustime/FocusTimePopup.qml" },
-            
-            // Full width, centered vertically
-            "wallpaper": { w: mw, h: 650, rx: 0, ry: Math.floor((mh/2)-(650/2)), comp: "wallpaper/WallpaperPicker.qml" },
-            
-            "hidden":    { w: 1, h: 1, rx: -5000 - mx, ry: -5000 - my, comp: "" } 
-        };
-
-        if (!base[name]) return null;
-        let t = base[name];
-        t.x = mx + t.rx;
-        t.y = my + t.ry;
-        return t;
+        // Outsourced to WindowRegistry.js for cleaner configuration management
+        return Registry.getLayout(name, masterWindow.activeMx, masterWindow.activeMy, masterWindow.activeMw, masterWindow.activeMh);
     }
+    
     width: 1
     height: 1
     implicitWidth: width
