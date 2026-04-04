@@ -9,6 +9,9 @@ Rectangle {
     height: 1080
     color: Colors.base
 
+    // FIX: Dynamically get the username. Fallback to the first user in the model if lastUser is empty.
+    property string currentUserName: userModel.lastUser !== "" ? userModel.lastUser : (userModel.count > 0 ? userModel.data(userModel.index(0, 0), 257) : "User")
+
     // SDDM Connections for error handling
     Connections {
         target: sddm
@@ -101,7 +104,8 @@ Rectangle {
 
             Image {
                 anchors.fill: parent
-                source: sddm.facesDir + "/" + userModel.lastUser + ".face.icon"
+                // FIX: Use currentUserName instead of lastUser
+                source: sddm.facesDir + "/" + root.currentUserName + ".face.icon"
                 fillMode: Image.PreserveAspectCrop
                 onStatusChanged: {
                     if (status == Image.Error) source = ""
@@ -115,7 +119,8 @@ Rectangle {
             spacing: 12
 
             Text {
-                text: userModel.lastUser || "User"
+                // FIX: Use currentUserName instead of lastUser
+                text: root.currentUserName
                 font.family: "JetBrains Mono"
                 font.pixelSize: 28
                 font.weight: Font.Bold
@@ -236,7 +241,8 @@ Rectangle {
                     onAccepted: {
                         if (text !== "") {
                             errorMessage.opacity = 0.0 // Hide error on new attempt
-                            sddm.login(userModel.lastUser, text, sessionMenu.currentIndex)
+                            // FIX: Use currentUserName instead of lastUser
+                            sddm.login(root.currentUserName, text, sessionMenu.currentIndex)
                         }
                     }
                     
