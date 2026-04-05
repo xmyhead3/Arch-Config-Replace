@@ -30,7 +30,8 @@ C_MAGENTA="\e[35m"
 # ==============================================================================
 # Global Variables & Initial States
 # ==============================================================================
-WALLPAPER_DIR="$HOME/Pictures/Wallpapers"
+# Uses standard XDG picture directory if available, otherwise defaults to ~/Pictures
+WALLPAPER_DIR="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/Wallpapers"
 WEATHER_API_KEY=""
 WEATHER_CITY_ID=""
 WEATHER_UNIT=""
@@ -991,21 +992,23 @@ if [ -f "$HYPR_CONF" ]; then
     if [ "$HAS_NVIDIA_PROPRIETARY" = true ]; then
         sed -i '/^env = NIXOS_OZONE_WL,1/a env = LIBVA_DRIVER_NAME,nvidia\nenv = XDG_SESSION_TYPE,wayland\nenv = GBM_BACKEND,nvidia-drm\nenv = __GLX_VENDOR_LIBRARY_NAME,nvidia\nenv = WLR_NO_HARDWARE_CURSORS,1\ncursor {\n    no_hardware_cursors = true\n}' "$HYPR_CONF"
     fi
+
 else
     echo -e "${C_RED}Warning: hyprland.conf not found at $HYPR_CONF${RESET}"
 fi
 
-# 4. Patch WallpaperPicker.qml dynamically
+# 5. Patch WallpaperPicker.qml dynamically
 if [ -f "$WP_QML" ]; then
-    sed -i 's|Quickshell.env("HOME") + "/Pictures/Wallpapers"|Quickshell.env("WALLPAPER_DIR")|g' "$WP_QML"
+    # Injecting the properly evaluated bash variable straight into the QML instead of the hardcoded Quickshell.env string
+    sed -i "s|Quickshell.env(\"HOME\") + \"/Pictures/Wallpapers\"|\"$WALLPAPER_DIR\"|g" "$WP_QML"
 fi
 
-# 5. Rename all instances of swww to awww in quickshell/wallpaper files
+# 6. Rename all instances of swww to awww in quickshell/wallpaper files
 if [ -d "$WP_DIR" ]; then
     find "$WP_DIR" -type f -exec sed -i 's/swww/awww/g' {} +
 fi
 
-# 6. Zsh Dynamism
+# 7. Zsh Dynamism
 if [ -f "$ZSH_RC" ]; then
     echo -e "\n# Dynamic System Paths" >> "$ZSH_RC"
     echo "export WALLPAPER_DIR=\"$WALLPAPER_DIR\"" >> "$ZSH_RC"
@@ -1017,7 +1020,11 @@ echo -e "\n${C_CYAN}[ INFO ]${RESET} Enabling Core System Services..."
 sudo systemctl enable NetworkManager.service
 printf "  -> NetworkManager enabled %-20s ${C_GREEN}[ OK ]${RESET}\n" ""
 
-# 7. Setup SDDM Theme and Config
+# Setup easyeffects as a daemon user service
+systemctl --user enable easyeffects.service --now 2>/dev/null || true
+printf "  -> EasyEffects user service enabled %-11s ${C_GREEN}[ OK ]${RESET}\n" ""
+
+# 8. Setup SDDM Theme and Config
 if [[ "$SETUP_SDDM_THEME" == true ]]; then
     if [ -d "$REPO_DIR/.config/sddm/themes/matugen-minimal" ]; then
         sudo mkdir -p /usr/share/sddm/themes/matugen-minimal
@@ -1055,7 +1062,7 @@ EOF
     fi
 fi
 
-# --- 8. Finalize Version Marker ---
+# --- 9. Finalize Version Marker ---
 echo "$DOTS_VERSION" > "$VERSION_FILE"
 printf "  -> Version marker updated (v%s) %-7s ${C_GREEN}[ OK ]${RESET}\n" "$DOTS_VERSION" ""
 
