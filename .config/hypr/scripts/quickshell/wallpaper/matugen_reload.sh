@@ -40,13 +40,12 @@ except Exception as e:
 # ------------------------------------------------------------------------------
 # If Tera dumped {"color": "#hex"} into your text files, this strips it to #hex.
 TEXT_FILES=(
-    "/tmp/kitty-matugen-colors.conf"
+    "$HOME/.config/kitty/kitty-matugen-colors.conf"
     "$HOME/.config/nvim/matugen_colors.lua"
     "$HOME/.config/cava/colors"
     "$HOME/.config/swayosd/style.css"
     "$HOME/.config/swaync/style.css"
     "$HOME/.config/rofi/theme.rasi"
-    "/usr/share/sddm/themes/matugen-minimal/Colors.qml"
 )
 
 for file in "${TEXT_FILES[@]}"; do

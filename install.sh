@@ -72,6 +72,8 @@ ARCH_PKGS=(
     "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git" "unzip" "python-websockets" "qt6-websockets"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
     "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd-git" "nautilus"
+    # SDDM / Qt Dependencies to prevent greeter crashes on Wayland
+    "qt5-wayland" "qt5-quickcontrols" "qt5-quickcontrols2" "qt5-graphicaleffects" "qt6-wayland"
 )
 
 # ==============================================================================
@@ -760,6 +762,11 @@ fi
 if [[ "$INSTALL_SDDM" == true ]]; then
     sudo systemctl enable sddm.service -f
     printf "  -> SDDM enabled successfully %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
+    
+    # Fix for SDDM black screen on logout (forces dangling wayland session processes to close)
+    echo "  -> Applying systemd logind workaround for Wayland logout black screens..."
+    sudo sed -i 's/^#*KillUserProcesses=.*/KillUserProcesses=yes/' /etc/systemd/logind.conf
+    sudo systemctl restart systemd-logind 2>/dev/null || true
 fi
 
 # --- 3. Repository Cloning & Wallpapers ---
