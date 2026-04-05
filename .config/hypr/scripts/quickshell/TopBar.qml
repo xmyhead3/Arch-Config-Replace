@@ -233,10 +233,8 @@ PanelWindow {
     Process {
         id: sysWaiter
         command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/sys_waiter.sh"]
-        onExited: sysPoller.running = true // Hard failsafe if stdout doesn't emit properly
-        stdout: StdioCollector {
-            onStreamFinished: sysPoller.running = true
-        }
+        // Strictly use onExited. Quickshell will no longer hook into stdout, preventing pipe deadlocks.
+        onExited: sysPoller.running = true 
     }
 
     // Weather remains a slow poll since it fetches from web
