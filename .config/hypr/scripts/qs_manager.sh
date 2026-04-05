@@ -31,11 +31,10 @@ if [[ "$ACTION" =~ ^[0-9]+$ ]]; then
 
     TARGET_ADDR=$(hyprctl clients -j | jq -r ".[] | select(.workspace.id == $WORKSPACE_NUM and .class != \"qs-master\") | .address" | head -n 1)
 
-    # FIXED: Removed 'keyword cursor:no_warps' toggles to prevent Wayland pointer desync in Hyprland 0.54+
     if [[ -n "$TARGET_ADDR" && "$TARGET_ADDR" != "null" ]]; then
-        hyprctl --batch "dispatch $CMD ; dispatch focuswindow address:$TARGET_ADDR"
+        hyprctl --batch "dispatch $CMD ; keyword cursor:no_warps true ; dispatch focuswindow address:$TARGET_ADDR ; keyword cursor:no_warps false"
     else
-        hyprctl dispatch "$CMD"
+        hyprctl --batch "dispatch $CMD ; keyword cursor:no_warps true ; dispatch focuswindow qs-master ; keyword cursor:no_warps false"
     fi
 
     exit 0
@@ -158,15 +157,19 @@ save_and_focus_widget() {
     local current_window=$(hyprctl activewindow -j 2>/dev/null)
     local current_title=$(echo "$current_window" | jq -r '.title // empty')
     local current_addr=$(echo "$current_window" | jq -r '.address // empty')
+    
+    # Grab the active workspace so we can pull the widget to us
+    local active_ws=$(hyprctl activeworkspace -j | jq -r '.id')
 
     if [[ "$current_title" != "qs-master" && -n "$current_addr" && "$current_addr" != "null" ]]; then
         echo "$current_addr" > "$PREV_FOCUS_FILE"
     fi
 
-    # Dispatch focus natively (run async with a tiny delay to allow QML to move the window first)
+    # Dispatch focus without warping the cursor (run async with a tiny delay to allow QML to move the window first)
     (
         sleep 0.05
-        hyprctl dispatch focuswindow title:^qs-master$ >/dev/null 2>&1
+        # FOOLPROOF FIX: Move the qs-master window to the currently active workspace silently, THEN focus it.
+        hyprctl --batch "keyword cursor:no_warps true ; dispatch movetoworkspacesilent $active_ws,title:^qs-master$ ; dispatch focuswindow title:^qs-master$ ; keyword cursor:no_warps false" >/dev/null 2>&1
     ) &
 }
 
@@ -174,8 +177,8 @@ restore_focus() {
     if [[ -f "$PREV_FOCUS_FILE" ]]; then
         local prev_addr=$(cat "$PREV_FOCUS_FILE")
         if [[ -n "$prev_addr" && "$prev_addr" != "null" ]]; then
-            # Restore focus natively to the previous window
-            hyprctl dispatch focuswindow address:$prev_addr >/dev/null 2>&1
+            # Restore focus to the previous window without warping the cursor
+            hyprctl --batch "keyword cursor:no_warps true ; dispatch focuswindow address:$prev_addr ; keyword cursor:no_warps false" >/dev/null 2>&1
         fi
         rm -f "$PREV_FOCUS_FILE"
     fi
