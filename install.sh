@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.0.4"
+DOTS_VERSION="1.0.5"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 mkdir -p "$(dirname "$VERSION_FILE")"
@@ -82,8 +82,15 @@ case $OS in
             echo -e "${C_CYAN}Bootstrapping TUI dependencies (fzf, pciutils, jq, curl)...${RESET}"
             sudo pacman -Sy --noconfirm --needed fzf pciutils jq curl > /dev/null 2>&1
         fi
+
+        # 2. Ensure multilib is enabled for lib32-* driver support
+        if ! grep -q "^\[multilib\]" /etc/pacman.conf; then
+            echo -e "${C_CYAN}Enabling multilib repository for 32-bit driver support...${RESET}"
+            sudo sed -i '/^#\[multilib\]/{s/^#//;n;s/^#//}' /etc/pacman.conf
+            sudo pacman -Sy --noconfirm > /dev/null 2>&1
+        fi
         
-        # 2. Automatically install 'yay' if no AUR helper is found on a clean system
+        # 3. Automatically install 'yay' if no AUR helper is found on a clean system
         if ! command -v yay &> /dev/null && ! command -v paru &> /dev/null; then
             echo -e "${C_CYAN}Installing 'yay' (AUR helper) to fetch custom packages...${RESET}"
             sudo pacman -S --noconfirm --needed base-devel git
@@ -92,7 +99,7 @@ case $OS in
             rm -rf /tmp/yay-bin
         fi
         
-        # 3. Set the correct package manager
+        # 4. Set the correct package manager
         if command -v yay &> /dev/null; then
             PKG_MANAGER="yay -S --noconfirm --needed"
         elif command -v paru &> /dev/null; then
@@ -597,8 +604,8 @@ sudo -v
 
 # --- 0. Resolve Package Conflicts ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Resolving potential package conflicts..."
-# Added 'jack' and 'jack2' here to prevent the pipewire-jack installation from getting hung up
-CONFLICTING_PKGS=("swayosd" "quickshell" "matugen" "jack" "jack2")
+# Added 'jack', 'jack2', and 'go-yq' here to prevent installation hangs
+CONFLICTING_PKGS=("swayosd" "quickshell" "matugen" "jack" "jack2" "go-yq")
 for cpkg in "${CONFLICTING_PKGS[@]}"; do
     if pacman -Qq | grep -qx "$cpkg"; then
         echo -e "  -> ${C_YELLOW}Removing conflicting package '$cpkg'...${RESET}"
@@ -728,6 +735,7 @@ else
 fi
 rm -rf "$WALLPAPER_CLONE_DIR"
 printf "  -> Wallpapers installed to %-12s ${C_GREEN}[ OK ]${RESET}\n" "$WALLPAPER_DIR"
+
 # --- 4. Copying Dotfiles & Backups ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Applying Configurations & Backing Up Old Ones..."
 TARGET_CONFIG_DIR="$HOME/.config"
