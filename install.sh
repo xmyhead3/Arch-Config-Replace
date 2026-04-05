@@ -1013,6 +1013,10 @@ if [ -f "$ZSH_RC" ]; then
     sed -i "s/OS_LOGO_PLACEHOLDER/${OS}_small/g" "$ZSH_RC"
 fi
 
+echo -e "\n${C_CYAN}[ INFO ]${RESET} Enabling Core System Services..."
+sudo systemctl enable NetworkManager.service
+printf "  -> NetworkManager enabled %-20s ${C_GREEN}[ OK ]${RESET}\n" ""
+
 # 7. Setup SDDM Theme and Config
 if [[ "$SETUP_SDDM_THEME" == true ]]; then
     if [ -d "$REPO_DIR/.config/sddm/themes/matugen-minimal" ]; then
