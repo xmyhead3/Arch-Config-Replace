@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import QtCore
 import Qt.labs.folderlistmodel
+import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import "../" 
@@ -98,7 +99,7 @@ Item {
                         cp "$DEST_FILE" /tmp/lock_bg.png
                         pkill mpvpaper || true
                         swww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 &
-                        matugen image "$FINAL_THUMB" --source-color-index 0 && bash "$RELOAD_SCRIPT"
+                        matugen image "$FINAL_THUMB" && bash "$RELOAD_SCRIPT"
                         wait
                     ) >/dev/null 2>&1 & disown
                 `;
@@ -133,7 +134,7 @@ Item {
                             
                             pkill mpvpaper || true
                             swww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 &
-                            matugen image "$FINAL_THUMB" --source-color-index 0 && bash "$RELOAD_SCRIPT"
+                            matugen image "$FINAL_THUMB" && bash "$RELOAD_SCRIPT"
                             wait
                         fi
                     ) >/dev/null 2>&1 & disown
@@ -171,7 +172,7 @@ Item {
                 ${lockBgCmd}
                 pkill mpvpaper || true
                 ${wallpaperCmd} &
-                matugen image "$THUMB_FILE" --source-color-index 0 && bash "$RELOAD_SCRIPT"
+                matugen image "$THUMB_FILE" && bash "$RELOAD_SCRIPT"
                 wait
             ) >/dev/null 2>&1 & disown
         `
@@ -206,6 +207,9 @@ Item {
                 window.isSearchPaused = true;
             }
         } else {
+            window.isFilterAnimating = true;
+            filterAnimationTimer.restart();
+
             // Re-apply focus rules when re-opening
             if (window.currentFilter !== "Search") {
                 window.applyFilters(true);
@@ -446,6 +450,22 @@ Item {
     Timer {
         id: scrollThrottle
         interval: 150 
+    }
+
+    // Prevents video playback during heavy UI transitions to avoid lag
+    property bool isFilterAnimating: false
+    Timer {
+        id: filterAnimationTimer
+        interval: 800
+        onTriggered: window.isFilterAnimating = false
+    }
+
+    // Prevents video playback during item-to-item list switching animations
+    property bool isItemAnimating: false
+    Timer {
+        id: itemAnimationTimer
+        interval: 500
+        onTriggered: window.isItemAnimating = false
     }
 
     // -------------------------------------------------------------------------
@@ -716,6 +736,8 @@ Item {
     }
 
     onCurrentFilterChanged: {
+        window.isFilterAnimating = true;
+        filterAnimationTimer.restart();
         window.isModelChanging = true; 
         let returningFromSearch = (window._lastFilter === "Search" && window.currentFilter !== "Search");
         window._lastFilter = window.currentFilter;
@@ -899,6 +921,9 @@ Item {
         focus: true
         
         onCurrentIndexChanged: {
+            window.isItemAnimating = true;
+            itemAnimationTimer.restart();
+
             // Guard: completely ignore index resets if the view's internal model doesn't match the search state yet
             if (view.model !== searchProxyModel || window.currentFilter !== "Search") return;
             
@@ -976,6 +1001,28 @@ Item {
             readonly property real targetWidth: isVisuallyEnlarged ? (window.itemWidth * 1.5) : (window.itemWidth * 0.5)
             readonly property real targetHeight: isVisuallyEnlarged ? (window.itemHeight + 30) : window.itemHeight 
             
+            property bool isPlayingVideo: false
+
+            Timer {
+                id: videoPlayTimer
+                interval: 250
+                running: delegateRoot.isVisuallyEnlarged && delegateRoot.isVideo && !window.isScrollingBlocked && !window.isFilterAnimating && !window.isItemAnimating
+                onTriggered: {
+                    if (delegateRoot.isVisuallyEnlarged && delegateRoot.isVideo) {
+                        delegateRoot.isPlayingVideo = true;
+                        previewPlayer.play();
+                    }
+                }
+            }
+
+            onIsVisuallyEnlargedChanged: {
+                if (!isVisuallyEnlarged) {
+                    isPlayingVideo = false;
+                    videoPlayTimer.stop();
+                    previewPlayer.stop();
+                }
+            }
+            
             width: matchesFilter ? (targetWidth + window.spacing) : 0
             visible: width > 0.1 || opacity > 0.01
             opacity: matchesFilter ? (isVisuallyEnlarged ? 1.0 : 0.6) : 0.0
@@ -1044,8 +1091,31 @@ Item {
                         }
                     }
                     
+                    MediaPlayer {
+                        id: previewPlayer
+                        source: delegateRoot.isPlayingVideo ? "file://" + window.srcDir + "/" + window.getCleanName(delegateRoot.safeFileName) : ""
+                        audioOutput: AudioOutput { muted: true }
+                        videoOutput: previewOutput
+                        loops: MediaPlayer.Infinite
+                    }
+
+                    VideoOutput {
+                        id: previewOutput
+                        anchors.centerIn: parent
+                        anchors.horizontalCenterOffset: -50 
+                        width: (window.itemWidth * 1.5) + ((window.itemHeight + 30) * Math.abs(window.skewFactor)) + 50
+                        height: window.itemHeight + 30
+                        fillMode: VideoOutput.PreserveAspectCrop
+                        visible: delegateRoot.isPlayingVideo && previewPlayer.playbackState === MediaPlayer.PlayingState
+
+                        transform: Matrix4x4 {
+                            property real s: -window.skewFactor
+                            matrix: Qt.matrix4x4(1, s, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)
+                        }
+                    }
+                    
                     Rectangle {
-                        visible: delegateRoot.isVideo
+                        visible: delegateRoot.isVideo && (!delegateRoot.isPlayingVideo || previewPlayer.playbackState !== MediaPlayer.PlayingState)
                         anchors.top: parent.top
                         anchors.right: parent.right
                         anchors.margins: 10
