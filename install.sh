@@ -928,6 +928,29 @@ sudo systemctl enable --now swayosd-libinput-backend.service
 # Attempt to start it locally if DBUS is available (fails silently in TTY, which is fine since --global catches the next login)
 systemctl --user start pipewire wireplumber pipewire-pulse 2>/dev/null || true
 
+# --- Create and enable SwayOSD user service ---
+SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+mkdir -p "$SYSTEMD_USER_DIR"
+cat <<EOF > "$SYSTEMD_USER_DIR/swayosd.service"
+[Unit]
+Description=SwayOSD Service
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env swayosd-server --top-margin 0.9 --style $HOME/.config/swayosd/style.css
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+
+systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable swayosd.service 2>/dev/null || true
+systemctl --user start swayosd.service 2>/dev/null || true
+printf "  -> SwayOSD user service configured %-17s ${C_GREEN}[ OK ]${RESET}\n" ""
+
 if [ "$INSTALL_ZSH" = true ] && command -v zsh &> /dev/null; then
     if [ -f "$HOME/.zshrc" ]; then
         echo -e "  -> Extracting existing aliases from ~/.zshrc..."
@@ -1042,13 +1065,10 @@ if [ -f "$HYPR_CONF" ]; then
         sed -i "s/^ *kb_options =.*/    kb_options = /" "$HYPR_CONF"
     fi
 
-    # 1. Inject SwayOSD Autostart (Looking for the new 'awww-daemon' entry)
-    sed -i '/^exec-once = awww-daemon/a exec-once = swayosd-server --top-margin 0.9 --style ~/.config/swayosd/style.css' "$HYPR_CONF"
-
-    # 2. Inject Environment Variables for Quickshell
+    # 1. Inject Environment Variables for Quickshell
     sed -i "/^env = NIXOS_OZONE_WL,1/a env = WALLPAPER_DIR,$WALLPAPER_DIR\nenv = SCRIPT_DIR,$HOME/.config/hypr/scripts" "$HYPR_CONF"
     
-    # 3. Inject Advanced Nvidia specific configurations (ONLY IF PROPRIETARY IS CHOSEN)
+    # 2. Inject Advanced Nvidia specific configurations (ONLY IF PROPRIETARY IS CHOSEN)
     if [ "$HAS_NVIDIA_PROPRIETARY" = true ]; then
         sed -i '/^env = NIXOS_OZONE_WL,1/a env = LIBVA_DRIVER_NAME,nvidia\nenv = XDG_SESSION_TYPE,wayland\nenv = GBM_BACKEND,nvidia-drm\nenv = __GLX_VENDOR_LIBRARY_NAME,nvidia\nenv = WLR_NO_HARDWARE_CURSORS,1\ncursor {\n    no_hardware_cursors = true\n}' "$HYPR_CONF"
     fi
@@ -1058,11 +1078,11 @@ fi
 
 # 4. Patch WallpaperPicker.qml dynamically
 if [ -f "$WP_QML" ]; then
-    # Injecting the properly evaluated bash variable straight into the QML instead of the hardcoded Quickshell.env string
-    sed -i "s|Quickshell.env(\"HOME\") + \"/Images/Wallpapers\"|\"$WALLPAPER_DIR\"|g" "$WP_QML"
-    
-    # Inject --source-color-index 0 to Matugen commands for 4.0 compatibility
-    sed -i 's/matugen image "[^"]*"/& --source-color-index 0/g' "$WP_QML"
+    # Injecting the properly evaluated bash variable straight into the QML instead of the hardcoded Quickshell.env string
+    sed -i "s|Quickshell.env(\"HOME\") + \"/Images/Wallpapers\"|\"$WALLPAPER_DIR\"|g" "$WP_QML"
+    
+    # Inject --source-color-index 0 to Matugen commands for 4.0 compatibility
+    sed -i 's/matugen image "[^"]*"/& --source-color-index 0/g' "$WP_QML"
 fi
 
 # 5. Rename all instances of swww to awww in quickshell/wallpaper files
