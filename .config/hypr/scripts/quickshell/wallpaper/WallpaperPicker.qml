@@ -48,6 +48,9 @@ Item {
     property bool isDownloadingWallpaper: false
     property string currentDownloadName: ""
     
+    // STRICT ARCHITECTURAL LOCK
+    property bool isApplying: false 
+    
     // Reactive Status Properties
     property bool isStartup: localFolderModel.status === FolderListModel.Loading || srcModel.status === FolderListModel.Loading
     property bool isReady: visible && localFolderModel.status === FolderListModel.Ready
@@ -80,7 +83,10 @@ Item {
     // GLOBAL ACTION: APPLY WALLPAPER
     // -------------------------------------------------------------------------
     function applyWallpaper(safeFileName, isVideo) {
-        if (!safeFileName) return;
+        if (!safeFileName || window.isApplying) return;
+        
+        // 1. STRICT LOCK: Instantly block all further mouse and keyboard input
+        window.isApplying = true; 
         
         window.targetWallName = safeFileName
         let cleanName = window.getCleanName(safeFileName)
@@ -90,7 +96,6 @@ Item {
             reloadScript = decodeURIComponent(reloadScript.substring(7))
         }
 
-        // Strictly safe variable escaping to prevent bash injection breaks on files with spaces, ' or characters
         const escapeBash = (str) => String(str).replace(/(["\\$`])/g, '\\$1');
         
         if (window.currentFilter === "Search" && window.hasSearched) {
@@ -103,17 +108,32 @@ Item {
 
             if (alreadyExists) {
                 const applyScript = `
-                    export DEST_FILE="${escapeBash(destFile)}"
-                    export FINAL_THUMB="${escapeBash(finalThumb)}"
-                    export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
-                    
                     (
-                        cp "$DEST_FILE" /tmp/lock_bg.png
+                        # Command UI to close immediately
+                        echo 'close' > /tmp/qs_widget_state
+                        
+                        export DEST_FILE="${escapeBash(destFile)}"
+                        export FINAL_THUMB="${escapeBash(finalThumb)}"
+                        export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
+                        
+                        cp "$DEST_FILE" /tmp/lock_bg.png || true
                         pkill mpvpaper || true
-                        swww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 &
-                        matugen image "$FINAL_THUMB" --source-color-index 0 && bash "$RELOAD_SCRIPT"
-                        wait
-                    ) >/dev/null 2>&1 & disown
+                        
+                        # Run matugen completely detached so it doesn't block swww execution
+                        ( matugen image "$FINAL_THUMB" || true; bash "$RELOAD_SCRIPT" || true ) &
+                        MATUGEN_PID=$!
+                        
+                        # DETERMINISTIC LOOP: Force swww to succeed.
+                        # It will poll every 50ms up to 20 times until the compositor accepts the frame.
+                        for i in {1..20}; do
+                            if swww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >/dev/null 2>&1; then
+                                break
+                            fi
+                            sleep 0.05
+                        done
+                        
+                        wait $MATUGEN_PID
+                    ) </dev/null >/dev/null 2>&1 & disown
                 `;
                 Quickshell.execDetached(["bash", "-c", applyScript]);
             } else {
@@ -141,15 +161,27 @@ Item {
                             fi
                             
                             cp "$TEMP_THUMB" "$FINAL_THUMB"
-                            magick "$DEST_FILE" -resize x420 -quality 70 "$FINAL_THUMB"
-                            cp "$DEST_FILE" /tmp/lock_bg.png
+                            magick "$DEST_FILE" -resize x420 -quality 70 "$FINAL_THUMB" || true
                             
+                            echo 'close' > /tmp/qs_widget_state
+                            
+                            cp "$DEST_FILE" /tmp/lock_bg.png || true
                             pkill mpvpaper || true
-                            swww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 &
-                            matugen image "$FINAL_THUMB" --source-color-index 0 && bash "$RELOAD_SCRIPT"
-                            wait
+                            
+                            ( matugen image "$FINAL_THUMB" || true; bash "$RELOAD_SCRIPT" || true ) &
+                            MATUGEN_PID=$!
+                            
+                            # DETERMINISTIC LOOP
+                            for i in {1..20}; do
+                                if swww img "$DEST_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >/dev/null 2>&1; then
+                                    break
+                                fi
+                                sleep 0.05
+                            done
+                            
+                            wait $MATUGEN_PID
                         fi
-                    ) >/dev/null 2>&1 & disown
+                    ) </dev/null >/dev/null 2>&1 & disown
                 `;
                 Quickshell.execDetached(["bash", "-c", downloadScript]);
             }
@@ -171,25 +203,38 @@ Item {
             lockBgCmd = `cp "$THUMB_FILE" /tmp/lock_bg.png`
         } else {
             const randomTransition = window.transitions[Math.floor(Math.random() * window.transitions.length)]
-            wallpaperCmd = `swww img "$WALL_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1`
+            // Inject the deterministic loop directly into the standard command variable
+            wallpaperCmd = `
+                for i in {1..20}; do
+                    if swww img "$WALL_FILE" --transition-type ${randomTransition} --transition-pos 0.5,0.5 --transition-fps 144 --transition-duration 1 >/dev/null 2>&1; then
+                        break
+                    fi
+                    sleep 0.05
+                done
+            `
             lockBgCmd = `cp "$WALL_FILE" /tmp/lock_bg.png`
         }
 
         const fullScript = `
-            export WALL_FILE="${escOriginal}"
-            export THUMB_FILE="${escThumb}"
-            export RELOAD_SCRIPT="${escReload}"
-            
             (
-                ${lockBgCmd}
+                echo 'close' > /tmp/qs_widget_state
+                
+                export WALL_FILE="${escOriginal}"
+                export THUMB_FILE="${escThumb}"
+                export RELOAD_SCRIPT="${escReload}"
+                
+                ${lockBgCmd} || true
                 pkill mpvpaper || true
-                ${wallpaperCmd} &
-                matugen image "$THUMB_FILE" --source-color-index 0 && bash "$RELOAD_SCRIPT"
-                wait
-            ) >/dev/null 2>&1 & disown
+                
+                ( matugen image "$THUMB_FILE" || true; bash "$RELOAD_SCRIPT" || true ) &
+                MATUGEN_PID=$!
+                
+                ${wallpaperCmd}
+                
+                wait $MATUGEN_PID
+            ) </dev/null >/dev/null 2>&1 & disown
         `
         Quickshell.execDetached(["bash", "-c", fullScript])
-        Quickshell.execDetached(["bash", "-c", "echo 'close' > /tmp/qs_widget_state"])
     }
 
     // -------------------------------------------------------------------------
@@ -214,6 +259,7 @@ Item {
         if (!visible) {
             window.initialFocusSet = false;
             window.searchIndexRestored = false;
+            window.isApplying = false; // Free the lock strictly when hidden
             
             if (window.hasSearched) {
                 window.isSearchPaused = true;
@@ -444,7 +490,7 @@ Item {
     readonly property string homeDir: "file://" + Quickshell.env("HOME")
     readonly property string thumbDir: homeDir + "/.cache/wallpaper_picker/thumbs"
     readonly property string searchDir: homeDir + "/.cache/wallpaper_picker/search_thumbs"
-    readonly property string srcDir: Quickshell.env("HOME") + "/Pictures/Wallpapers"
+    readonly property string srcDir: Quickshell.env("HOME") + "/Images/Wallpapers"
 
     readonly property var transitions: ["grow", "outer", "any", "wipe", "wave", "pixel", "center"]
 
@@ -771,18 +817,19 @@ Item {
     // -------------------------------------------------------------------------
     Shortcut { 
         sequence: "Left"; 
-        enabled: !window.isScrollingBlocked
+        enabled: !window.isScrollingBlocked && !window.isApplying
         onActivated: window.stepToNextValidIndex(-1) 
     }
     Shortcut { 
         sequence: "Right"; 
-        enabled: !window.isScrollingBlocked
+        enabled: !window.isScrollingBlocked && !window.isApplying
         onActivated: window.stepToNextValidIndex(1) 
     }
     
     Shortcut { 
         sequence: "Return"
-        enabled: !searchInput.activeFocus && !window.isScrollingBlocked
+        // Bind the lock firmly to the shortcut to stop multiple keyboard fires
+        enabled: !searchInput.activeFocus && !window.isScrollingBlocked && !window.isApplying
         onActivated: { 
             let targetModel = window.getModelForFilter(window.currentFilter);
             if (view.currentIndex >= 0 && view.currentIndex < targetModel.count) {
@@ -795,9 +842,9 @@ Item {
         } 
     }
     
-    Shortcut { sequence: "Escape"; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
-    Shortcut { sequence: "Tab"; onActivated: window.cycleFilter(1) }
-    Shortcut { sequence: "Backtab"; onActivated: window.cycleFilter(-1) }
+    Shortcut { sequence: "Escape"; enabled: !window.isApplying; onActivated: { if (window.currentFilter === "Search") { window.currentFilter = "All"; } } }
+    Shortcut { sequence: "Tab"; enabled: !window.isApplying; onActivated: window.cycleFilter(1) }
+    Shortcut { sequence: "Backtab"; enabled: !window.isApplying; onActivated: window.cycleFilter(-1) }
 
     // -------------------------------------------------------------------------
     // CONTENT & DUAL MODELS
@@ -909,7 +956,7 @@ Item {
         orientation: ListView.Horizontal
         clip: false 
 
-        interactive: !window.isScrollingBlocked
+        interactive: !window.isScrollingBlocked && !window.isApplying
         cacheBuffer: 2000
 
         highlightRangeMode: ListView.StrictlyEnforceRange
@@ -958,7 +1005,7 @@ Item {
             acceptedButtons: Qt.NoButton 
 
             onWheel: (wheel) => {
-                if (window.isScrollingBlocked) {
+                if (window.isScrollingBlocked || window.isApplying) {
                     wheel.accepted = true;
                     return;
                 }
@@ -1052,7 +1099,8 @@ Item {
                 
                 MouseArea {
                     anchors.fill: parent
-                    enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked
+                    // Lock inputs completely on the delegate as well
+                    enabled: delegateRoot.matchesFilter && !window.isScrollingBlocked && !window.isApplying
                     onClicked: {
                         view.currentIndex = index
                         window.applyWallpaper(delegateRoot.safeFileName, delegateRoot.isVideo)
@@ -1343,6 +1391,7 @@ Item {
                         id: filterMouse
                         anchors.fill: parent
                         hoverEnabled: true 
+                        enabled: !window.isApplying // Lock UI interaction
                         onClicked: window.currentFilter = modelData.name
                         cursorShape: Qt.PointingHandCursor
                     }
@@ -1367,6 +1416,7 @@ Item {
                     id: scMouse
                     anchors.fill: parent
                     hoverEnabled: true
+                    enabled: !window.isApplying // Lock UI interaction
                     cursorShape: Qt.PointingHandCursor
                     onClicked: window.isSearchPaused = !window.isSearchPaused
                 }
@@ -1420,6 +1470,7 @@ Item {
                     id: searchMouseArea
                     anchors.fill: parent
                     hoverEnabled: true 
+                    enabled: !window.isApplying // Lock UI interaction
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (window.currentFilter !== "Search") {
@@ -1510,6 +1561,7 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
+                        enabled: !window.isApplying // Lock UI interaction
                         onClicked: {
                             window.triggerOnlineSearch();
                         }

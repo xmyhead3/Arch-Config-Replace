@@ -1058,8 +1058,11 @@ fi
 
 # 4. Patch WallpaperPicker.qml dynamically
 if [ -f "$WP_QML" ]; then
-    # Injecting the properly evaluated bash variable straight into the QML instead of the hardcoded Quickshell.env string
-    sed -i "s|Quickshell.env(\"HOME\") + \"/Pictures/Wallpapers\"|\"$WALLPAPER_DIR\"|g" "$WP_QML"
+    # Injecting the properly evaluated bash variable straight into the QML instead of the hardcoded Quickshell.env string
+    sed -i "s|Quickshell.env(\"HOME\") + \"/Images/Wallpapers\"|\"$WALLPAPER_DIR\"|g" "$WP_QML"
+    
+    # Inject --source-color-index 0 to Matugen commands for 4.0 compatibility
+    sed -i 's/matugen image "[^"]*"/& --source-color-index 0/g' "$WP_QML"
 fi
 
 # 5. Rename all instances of swww to awww in quickshell/wallpaper files
