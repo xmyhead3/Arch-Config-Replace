@@ -7,6 +7,19 @@ import "../"
 
 Item {
     id: window
+
+    // --- Responsive Scaling Logic ---
+    Scaler {
+        id: scaler
+        // Uses the physical screen width so the popup scales synchronously with the TopBar
+        currentWidth: Screen.width
+    }
+    
+    // Helper function scoped to the root Item for easy access in deeply nested elements and Canvases
+    function s(val) { 
+        return scaler.s(val); 
+    }
+
     // -------------------------------------------------------------------------
     // COLORS (Dynamic Matugen Palette)
     // -------------------------------------------------------------------------
@@ -104,8 +117,8 @@ Item {
     Process {
         id: sysPoller
         command: ["bash", "-c", 
-            "percent=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null | head -n1); echo \"${percent:-0}\"; " +
-            "status=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1); echo \"${status:-Unknown}\"; " +
+            "cat /sys/class/power_supply/BAT0/capacity 2>/dev/null || echo '0'; " +
+            "cat /sys/class/power_supply/BAT0/status 2>/dev/null || echo 'Unknown'; " +
             "powerprofilesctl get 2>/dev/null || echo 'balanced'; " +
             "awk '{print int($1/3600)\"h \"int(($1%3600)/60)\"m\"}' /proc/uptime 2>/dev/null || echo '0h 0m'; " +
             "wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print int($2*100), ($3==\"[MUTED]\"?\"off\":\"on\")}' || echo '0 on'; " +
@@ -216,12 +229,12 @@ Item {
         anchors.fill: parent
         scale: 0.92 + (0.08 * introMain)
         opacity: introMain
-        transform: Translate { y: 15 * (1 - introMain) }
+        transform: Translate { y: window.s(15) * (1 - introMain) }
 
         // Outer Border
         Rectangle {
             anchors.fill: parent
-            radius: 20
+            radius: window.s(20)
             color: window.base
             border.color: window.surface0 // Back to neutral so it doesn't clash
             border.width: 1
@@ -230,8 +243,8 @@ Item {
             // Rotating Background Blobs
             Rectangle {
                 width: parent.width * 0.8; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * 150
-                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * 100
+                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
+                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
                 opacity: 0.08
                 color: window.ambientPrimary
                 Behavior on color { ColorAnimation { duration: 1000 } }
@@ -239,8 +252,8 @@ Item {
             
             Rectangle {
                 width: parent.width * 0.9; height: width; radius: width / 2
-                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * -150
-                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * -100
+                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
+                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
                 opacity: 0.06
                 color: window.ambientSecondary
                 Behavior on color { ColorAnimation { duration: 1000 } }
@@ -255,8 +268,8 @@ Item {
                     model: 3
                     Rectangle {
                         anchors.centerIn: parent
-                        anchors.verticalCenterOffset: -70
-                        width: 320 + (index * 170)
+                        anchors.verticalCenterOffset: window.s(-70)
+                        width: window.s(320) + (index * window.s(170))
                         height: width
                         radius: width / 2
                         color: "transparent"
@@ -274,29 +287,29 @@ Item {
             Row {
                 anchors.top: parent.top
                 anchors.left: parent.left
-                anchors.margins: 25
-                spacing: 6
+                anchors.margins: window.s(25)
+                spacing: window.s(6)
                 
-                transform: Translate { y: -20 * (1.0 - introTop) }
+                transform: Translate { y: window.s(-20) * (1.0 - introTop) }
                 opacity: introTop
                 
                 // Hours Box
                 Rectangle {
-                    width: 44; height: 48; radius: 10
+                    width: window.s(44); height: window.s(48); radius: window.s(10)
                     color: "#0dffffff"; border.color: "#1affffff"; border.width: 1
                     
-                    Rectangle { anchors.fill: parent; radius: 10; color: window.ambientPrimary; opacity: 0.05; Behavior on color { ColorAnimation { duration: 1000 } } }
+                    Rectangle { anchors.fill: parent; radius: window.s(10); color: window.ambientPrimary; opacity: 0.05; Behavior on color { ColorAnimation { duration: 1000 } } }
                     Column {
                         anchors.centerIn: parent
                         Text { 
                             text: window.upHours.toString().padStart(2, '0')
-                            font.pixelSize: 18; font.family: "JetBrains Mono"; font.weight: Font.Black
+                            font.pixelSize: window.s(18); font.family: "JetBrains Mono"; font.weight: Font.Black
                             color: window.ambientPrimary
                             Behavior on color { ColorAnimation { duration: 1000 } }
                             anchors.horizontalCenter: parent.horizontalCenter 
                         }
                         Text { 
-                            text: "HR"; font.pixelSize: 8; font.family: "JetBrains Mono"; font.weight: Font.Bold
+                            text: "HR"; font.pixelSize: window.s(8); font.family: "JetBrains Mono"; font.weight: Font.Bold
                             color: window.subtext0; anchors.horizontalCenter: parent.horizontalCenter 
                         }
                     }
@@ -306,7 +319,7 @@ Item {
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
                     text: ":"
-                    font.pixelSize: 22; font.family: "JetBrains Mono"; font.weight: Font.Black
+                    font.pixelSize: window.s(22); font.family: "JetBrains Mono"; font.weight: Font.Black
                     color: window.ambientPrimary
                     Behavior on color { ColorAnimation { duration: 1000 } }
                     
@@ -321,21 +334,21 @@ Item {
 
                 // Mins Box
                 Rectangle {
-                    width: 44; height: 48; radius: 10
+                    width: window.s(44); height: window.s(48); radius: window.s(10)
                     color: "#0dffffff"; border.color: "#1affffff"; border.width: 1
                     
-                    Rectangle { anchors.fill: parent; radius: 10; color: window.ambientSecondary; opacity: 0.05; Behavior on color { ColorAnimation { duration: 1000 } } }
+                    Rectangle { anchors.fill: parent; radius: window.s(10); color: window.ambientSecondary; opacity: 0.05; Behavior on color { ColorAnimation { duration: 1000 } } }
                     Column {
                         anchors.centerIn: parent
                         Text { 
                             text: window.upMins.toString().padStart(2, '0')
-                            font.pixelSize: 18; font.family: "JetBrains Mono"; font.weight: Font.Black
+                            font.pixelSize: window.s(18); font.family: "JetBrains Mono"; font.weight: Font.Black
                             color: window.ambientSecondary
                             Behavior on color { ColorAnimation { duration: 1000 } }
                             anchors.horizontalCenter: parent.horizontalCenter 
                         }
                         Text { 
-                            text: "MIN"; font.pixelSize: 8; font.family: "JetBrains Mono"; font.weight: Font.Bold
+                            text: "MIN"; font.pixelSize: window.s(8); font.family: "JetBrains Mono"; font.weight: Font.Bold
                             color: window.subtext0; anchors.horizontalCenter: parent.horizontalCenter 
                         }
                     }
@@ -346,14 +359,14 @@ Item {
             Rectangle {
                 id: logoutBtn
                 anchors.top: parent.top; anchors.right: parent.right
-                anchors.margins: 25
-                width: logoutMa.containsMouse ? 44 + usernameText.implicitWidth + 12 : 44
-                height: 44; radius: 14
+                anchors.margins: window.s(25)
+                width: logoutMa.containsMouse ? window.s(44) + usernameText.implicitWidth + window.s(12) : window.s(44)
+                height: window.s(44); radius: window.s(14)
                 color: logoutMa.containsMouse ? "#1affffff" : "transparent"
                 border.color: logoutMa.containsMouse ? "#33ffffff" : "transparent"
                 clip: true
                 
-                transform: Translate { y: -20 * (1.0 - introTop) }
+                transform: Translate { y: window.s(-20) * (1.0 - introTop) }
                 opacity: introTop
 
                 Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
@@ -362,16 +375,16 @@ Item {
 
                 Row {
                     anchors.right: parent.right
-                    anchors.rightMargin: 13
+                    anchors.rightMargin: window.s(13)
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 12
+                    spacing: window.s(12)
 
                     Text {
                         id: usernameText
                         text: window.currentUserName
                         font.family: "JetBrains Mono"
                         font.weight: Font.Bold
-                        font.pixelSize: 14
+                        font.pixelSize: window.s(14)
                         color: window.text
                         anchors.verticalCenter: parent.verticalCenter
                         opacity: logoutMa.containsMouse ? 1.0 : 0.0
@@ -379,7 +392,7 @@ Item {
                     }
 
                     Text {
-                        font.family: "Iosevka Nerd Font"; font.pixelSize: 18
+                        font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(18)
                         color: logoutMa.containsMouse ? window.red : window.overlay0
                         text: "󰍃"
                         anchors.verticalCenter: parent.verticalCenter
@@ -406,13 +419,13 @@ Item {
                 z: 1
                 
                 opacity: introCore
-                transform: Translate { y: 25 * (1 - introCore) }
+                transform: Translate { y: window.s(25) * (1 - introCore) }
                 scale: 0.9 + (0.1 * introCore)
 
                 // --- CLEAN OUTSIDE GLOW HALO ---
                 Rectangle {
                     anchors.centerIn: centralCore
-                    width: centralCore.width + 45
+                    width: centralCore.width + window.s(45)
                     height: width
                     radius: width / 2
                     color: centralCore.isDangerState ? window.red : window.ambientPrimary
@@ -429,10 +442,10 @@ Item {
 
                 Rectangle {
                     id: centralCore
-                    width: 260
+                    width: window.s(260)
                     height: width
                     anchors.centerIn: parent
-                    anchors.verticalCenterOffset: -70
+                    anchors.verticalCenterOffset: window.s(-70)
                     radius: width / 2
                     z: 1
                     
@@ -514,12 +527,12 @@ Item {
                                 
                                 var centerX = width / 2;
                                 var centerY = height / 2;
-                                var radius = (width / 2) - 18; 
+                                var radius = (width / 2) - window.s(18); 
                                 var endAngle = (window.animCapacity / 100) * 2 * Math.PI;
                                 
                                 ctx.lineCap = "round";
                                 
-                                ctx.lineWidth = 8;
+                                ctx.lineWidth = window.s(8);
                                 ctx.beginPath();
                                 ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
                                 ctx.strokeStyle = "#0dffffff";
@@ -530,7 +543,7 @@ Item {
                                 fillGrad.addColorStop(1, window.batColorEnd.toString());
 
                                 ctx.globalAlpha = 1.0;
-                                ctx.lineWidth = 14;
+                                ctx.lineWidth = window.s(14);
                                 ctx.beginPath();
                                 ctx.arc(centerX, centerY, radius, 0, endAngle);
                                 ctx.strokeStyle = fillGrad;
@@ -544,7 +557,7 @@ Item {
                                             var sEnd = Math.min(endAngle, surgeAngle + 0.4);
                                             ctx.beginPath();
                                             ctx.arc(centerX, centerY, radius, sStart, sEnd);
-                                            ctx.lineWidth = 22;
+                                            ctx.lineWidth = window.s(22);
                                             ctx.strokeStyle = window.batColorStart.toString();
                                             ctx.globalAlpha = 0.5 * Math.sin(parent.pumpPhase * Math.PI);
                                             ctx.stroke();
@@ -553,7 +566,7 @@ Item {
                                             sEnd = Math.min(endAngle, surgeAngle + 0.2);
                                             ctx.beginPath();
                                             ctx.arc(centerX, centerY, radius, sStart, sEnd);
-                                            ctx.lineWidth = 28;
+                                            ctx.lineWidth = window.s(28);
                                             ctx.strokeStyle = window.batColorEnd.toString();
                                             ctx.globalAlpha = 0.8 * Math.sin(parent.pumpPhase * Math.PI);
                                             ctx.stroke();
@@ -564,7 +577,7 @@ Item {
                                             var hitX = centerX + Math.cos(endAngle) * radius;
                                             var hitY = centerY + Math.sin(endAngle) * radius;
                                             ctx.beginPath();
-                                            ctx.arc(hitX, hitY, 7 + (flarePhase * 15), 0, 2*Math.PI);
+                                            ctx.arc(hitX, hitY, window.s(7) + (flarePhase * window.s(15)), 0, 2*Math.PI);
                                             ctx.fillStyle = window.batColorEnd.toString();
                                             ctx.globalAlpha = (1.0 - flarePhase) * 0.6;
                                             ctx.fill();
@@ -579,7 +592,7 @@ Item {
                                             if (dStart < dEnd) {
                                                 ctx.beginPath();
                                                 ctx.arc(centerX, centerY, radius, dStart, dEnd);
-                                                ctx.lineWidth = 14 + (1 - d) * 2;
+                                                ctx.lineWidth = window.s(14) + (1 - d) * window.s(2);
                                                 ctx.strokeStyle = window.batColorEnd.toString();
                                                 ctx.globalAlpha = 0.2 * Math.sin(parent.dischargePhase * Math.PI);
                                                 ctx.stroke();
@@ -593,15 +606,15 @@ Item {
 
                     ColumnLayout {
                         anchors.centerIn: parent
-                        spacing: -2
+                        spacing: window.s(-2)
                         
                         RowLayout {
                             Layout.alignment: Qt.AlignHCenter
-                            spacing: 8
+                            spacing: window.s(8)
                             
                             Text {
                                 font.family: "Iosevka Nerd Font"
-                                font.pixelSize: 28
+                                font.pixelSize: window.s(28)
                                 color: window.batColorStart
                                 text: window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃")
                                 Behavior on color { ColorAnimation { duration: 400 } }
@@ -610,7 +623,7 @@ Item {
                             Text {
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Black
-                                font.pixelSize: 54
+                                font.pixelSize: window.s(54)
                                 color: window.text
                                 text: Math.round(window.animCapacity) + "%" 
                             }
@@ -620,7 +633,7 @@ Item {
                             Layout.alignment: Qt.AlignHCenter
                             font.family: "JetBrains Mono"
                             font.weight: Font.Bold
-                            font.pixelSize: 13
+                            font.pixelSize: window.s(13)
                             
                             color: window.isCharging 
                                     ? Qt.tint(window.green, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
@@ -649,39 +662,39 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.margins: 25
-                spacing: 15
+                anchors.margins: window.s(25)
+                spacing: window.s(15)
 
                 // 1. HARDWARE CONTROLS DOCK (Sliders)
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 96
-                    radius: 14
+                    Layout.preferredHeight: window.s(96)
+                    radius: window.s(14)
                     color: "#05ffffff"
                     border.color: "#1affffff"
                     border.width: 1
 
                     opacity: introSliders
-                    transform: Translate { y: 20 * (1.0 - introSliders) }
+                    transform: Translate { y: window.s(20) * (1.0 - introSliders) }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        anchors.margins: 14
-                        spacing: 12
+                        anchors.margins: window.s(14)
+                        spacing: window.s(12)
 
                         // Brightness Slider
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 15
+                            spacing: window.s(15)
 
                             Item {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
+                                Layout.preferredWidth: window.s(32)
+                                Layout.preferredHeight: window.s(32)
                                 Text {
                                     anchors.centerIn: parent
                                     text: window.sysBrightness > 66 ? "󰃠" : (window.sysBrightness > 33 ? "󰃟" : "󰃞")
                                     font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: 22
+                                    font.pixelSize: window.s(22)
                                     color: window.ambientPrimary
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
@@ -689,7 +702,7 @@ Item {
 
                             Item {
                                 Layout.fillWidth: true
-                                height: 18
+                                height: window.s(18)
                                 
                                 Timer {
                                     id: briCmdThrottle
@@ -705,7 +718,7 @@ Item {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    radius: 9
+                                    radius: window.s(9)
                                     color: "#0dffffff"
                                     border.color: "#1affffff"
                                     border.width: 1
@@ -714,7 +727,7 @@ Item {
                                     Rectangle {
                                         height: parent.height
                                         width: parent.width * (window.sysBrightness / 100)
-                                        radius: 9
+                                        radius: window.s(9)
                                         opacity: briMa.containsMouse ? 1.0 : 0.85
                                         Behavior on opacity { NumberAnimation { duration: 200 } }
                                         Behavior on width { enabled: !window.isDraggingBri; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
@@ -748,12 +761,12 @@ Item {
                         // Volume Slider
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 15
+                            spacing: window.s(15)
 
                             Rectangle {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
-                                radius: 16
+                                Layout.preferredWidth: window.s(32)
+                                Layout.preferredHeight: window.s(32)
+                                radius: window.s(16)
                                 color: volIconMa.containsMouse ? "#1affffff" : "transparent"
                                 border.color: volIconMa.containsMouse ? window.profileStart : "transparent"
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -763,7 +776,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: window.sysMuted || window.sysVolume === 0 ? "󰖁" : (window.sysVolume > 50 ? "󰕾" : "󰖀")
                                     font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: 22
+                                    font.pixelSize: window.s(22)
                                     color: window.sysMuted ? window.overlay0 : window.profileStart
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
@@ -784,7 +797,7 @@ Item {
 
                             Item {
                                 Layout.fillWidth: true
-                                height: 18
+                                height: window.s(18)
                                 
                                 Timer {
                                     id: volCmdThrottle
@@ -804,7 +817,7 @@ Item {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    radius: 9
+                                    radius: window.s(9)
                                     color: "#0dffffff"
                                     border.color: "#1affffff"
                                     border.width: 1
@@ -813,7 +826,7 @@ Item {
                                     Rectangle {
                                         height: parent.height
                                         width: parent.width * (window.sysVolume / 100)
-                                        radius: 9
+                                        radius: window.s(9)
                                         opacity: window.sysMuted ? 0.5 : (volMa.containsMouse ? 1.0 : 0.85)
                                         Behavior on opacity { NumberAnimation { duration: 200 } }
                                         Behavior on width { enabled: !window.isDraggingVol; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
@@ -849,8 +862,8 @@ Item {
                 // 2. SYSTEM ACTIONS DOCK - No Text, Monochromatic Waves, Big Icons
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 75
-                    spacing: 12
+                    Layout.preferredHeight: window.s(75)
+                    spacing: window.s(12)
                     
                     Repeater {
                         model: ListModel {
@@ -864,11 +877,11 @@ Item {
                             id: actionCapsule
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: 14
+                            radius: window.s(14)
 
                             // Staggered entry animation based on index
                             opacity: introActions
-                            transform: Translate { y: 30 * (1.0 - introActions) + (index * 12 * (1.0 - introActions)) }
+                            transform: Translate { y: window.s(30) * (1.0 - introActions) + (index * window.s(12) * (1.0 - introActions)) }
                             
                             // Map string names to dynamically grab the Matugen property, then generate a lighter version for a smooth wave
                             property color c1: window[baseColor] || window.surface1
@@ -876,6 +889,7 @@ Item {
 
                             color: actionMa.containsMouse ? "#1affffff" : "#0dffffff"
                             border.color: actionMa.containsMouse ? c1 : "#1affffff"
+                            // Keeping these explicit to 1px/2px prevents ugly half-pixel anti-aliasing glitches
                             border.width: actionMa.containsMouse ? 2 : 1
                             Behavior on color { ColorAnimation { duration: 200 } }
                             Behavior on border.color { ColorAnimation { duration: 200 } }
@@ -907,7 +921,7 @@ Item {
                                     ctx.clearRect(0, 0, width, height);
                                     if (actionCapsule.fillLevel <= 0.001) return;
                                     
-                                    var r = 14; 
+                                    var r = window.s(14); 
                                     var fillY = height * (1.0 - actionCapsule.fillLevel);
                                     ctx.save();
                                     ctx.beginPath();
@@ -926,7 +940,7 @@ Item {
                                     ctx.beginPath();
                                     ctx.moveTo(0, fillY);
                                     if (actionCapsule.fillLevel < 0.99) {
-                                        var waveAmp = 10 * Math.sin(actionCapsule.fillLevel * Math.PI); 
+                                        var waveAmp = window.s(10) * Math.sin(actionCapsule.fillLevel * Math.PI); 
                                         var cp1y = fillY + Math.sin(wavePhase) * waveAmp;
                                         var cp2y = fillY + Math.cos(wavePhase + Math.PI) * waveAmp;
                                         ctx.bezierCurveTo(width * 0.33, cp2y, width * 0.66, cp1y, width, fillY);
@@ -949,7 +963,7 @@ Item {
                             }
 
                             Rectangle {
-                                anchors.fill: parent; radius: 14; color: "#ffffff"
+                                anchors.fill: parent; radius: window.s(14); color: "#ffffff"
                                 opacity: actionCapsule.flashOpacity
                                 PropertyAnimation on opacity { id: cardFlashAnim; to: 0; duration: 500; easing.type: Easing.OutExpo }
                             }
@@ -958,7 +972,7 @@ Item {
                             Text { 
                                 anchors.centerIn: parent
                                 font.family: "Iosevka Nerd Font"
-                                font.pixelSize: 24
+                                font.pixelSize: window.s(24)
                                 color: actionMa.containsMouse ? window.text : window.subtext0
                                 text: icon
                                 Behavior on color { ColorAnimation { duration: 150 } }
@@ -974,7 +988,7 @@ Item {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     y: (actionCapsule.height / 2) - (height / 2) - (actionCapsule.height - parent.height)
                                     font.family: "Iosevka Nerd Font"
-                                    font.pixelSize: 24
+                                    font.pixelSize: window.s(24)
                                     color: window.crust
                                     text: icon 
                                 }
@@ -1025,25 +1039,25 @@ Item {
                 // 3. POWER PROFILES DOCK
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 54
-                    radius: 14
+                    Layout.preferredHeight: window.s(54)
+                    radius: window.s(14)
                     color: "#0dffffff" 
                     border.color: "#1affffff"
                     border.width: 1
 
                     opacity: introProfiles
-                    transform: Translate { y: 20 * (1.0 - introProfiles) }
+                    transform: Translate { y: window.s(20) * (1.0 - introProfiles) }
                     
                     Rectangle {
                         id: sliderPill
-                        width: (parent.width - 2) / 3 
-                        height: parent.height - 2
-                        y: 1
-                        radius: 10
+                        width: (parent.width - window.s(2)) / 3 
+                        height: parent.height - window.s(2)
+                        y: window.s(1)
+                        radius: window.s(10)
                         x: {
-                            if (window.powerProfile === "performance") return 1;
-                            if (window.powerProfile === "balanced") return width + 1;
-                            return (width * 2) + 1;
+                            if (window.powerProfile === "performance") return window.s(1);
+                            if (window.powerProfile === "balanced") return width + window.s(1);
+                            return (width * 2) + window.s(1);
                         }
                         
                         Behavior on x { NumberAnimation { duration: 400; easing.type: Easing.OutBack; easing.overshoot: 1.2 } }
@@ -1072,15 +1086,15 @@ Item {
                                 
                                 RowLayout {
                                     anchors.centerIn: parent
-                                    spacing: 8
+                                    spacing: window.s(8)
                                     Text {
-                                        font.family: "Iosevka Nerd Font"; font.pixelSize: 18
+                                        font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(18)
                                         color: window.powerProfile === name ? window.crust : (profileMa.containsMouse ? window.text : window.subtext0)
                                         text: icon
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
                                     Text {
-                                        font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: 13
+                                        font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: window.s(13)
                                         color: window.powerProfile === name ? window.crust : (profileMa.containsMouse ? window.text : window.subtext0)
                                         text: label
                                         Behavior on color { ColorAnimation { duration: 200 } }

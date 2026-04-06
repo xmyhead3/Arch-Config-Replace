@@ -7,6 +7,17 @@ import "../"
 
 Item {
     id: window
+
+    // --- Responsive Scaling Logic ---
+    Scaler {
+        id: scaler
+        currentWidth: Screen.width
+    }
+    
+    // Helper function scoped to the root Item
+    function s(val) { 
+        return scaler.s(val); 
+    }
     
     // -------------------------------------------------------------------------
     // COLORS (Dynamic Matugen Palette)
@@ -36,6 +47,7 @@ Item {
     // STATE & MATH
     // -------------------------------------------------------------------------
     property int activeEditIndex: 0
+    // Virtual mapping scale (1920px -> 192 virtual units)
     property real uiScale: 0.10 
     
     // Wayland Absolute Anchor tracking
@@ -66,7 +78,7 @@ Item {
     // -------------------------------------------------------------------------
     property real introProgress: 0.0
     property real monitorScale: 0.85
-    property real uiYOffset: 25
+    property real uiYOffset: window.s(25)
     property real screenLight: 0.0
 
     Component.onCompleted: startupAnim.start()
@@ -75,7 +87,7 @@ Item {
         id: startupAnim
         NumberAnimation { target: window; property: "introProgress"; from: 0.0; to: 1.0; duration: 900; easing.type: Easing.OutQuint }
         NumberAnimation { target: window; property: "monitorScale"; from: 0.85; to: 1.0; duration: 1200; easing.type: Easing.OutQuint }
-        NumberAnimation { target: window; property: "uiYOffset"; from: 25; to: 0; duration: 1800; easing.type: Easing.OutQuint }
+        NumberAnimation { target: window; property: "uiYOffset"; from: window.s(25); to: 0; duration: 1800; easing.type: Easing.OutQuint }
         NumberAnimation { target: window; property: "screenLight"; from: 0.0; to: 1.0; duration: 1500; easing.type: Easing.InOutQuad }
     }
     property bool applyHovered: false
@@ -86,7 +98,7 @@ Item {
     }
 
     // -------------------------------------------------------------------------
-    // MATHEMATICAL PERIMETER GLUE
+    // MATHEMATICAL PERIMETER GLUE (Virtual Coordinates - Do not scale)
     // -------------------------------------------------------------------------
     function isOverlapping(ax, ay, aw, ah, bx, by, bw, bh) {
         return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
@@ -241,7 +253,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            radius: 30
+            radius: window.s(30)
             color: window.base
             border.color: window.surface0
             border.width: 1
@@ -251,8 +263,8 @@ Item {
                 width: parent.width * 0.8
                 height: width
                 radius: width / 2
-                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * 150
-                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * 100
+                x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
+                y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
                 opacity: 0.04
                 color: window.selectedResAccent
                 Behavior on color { ColorAnimation { duration: 1000 } }
@@ -261,8 +273,8 @@ Item {
                 width: parent.width * 0.9
                 height: width
                 radius: width / 2
-                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * -150
-                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * -100
+                x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
+                y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
                 opacity: 0.04
                 color: window.selectedRateAccent
                 Behavior on color { ColorAnimation { duration: 1000 } }
@@ -273,11 +285,11 @@ Item {
             // ==========================================
             Item {
                 id: leftVisualArea
-                width: 380
-                height: 300
+                width: window.s(380)
+                height: window.s(300)
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                anchors.leftMargin: 20
+                anchors.leftMargin: window.s(20)
 
                 // --------------------------------------------------
                 // MODE 1: SINGLE MONITOR
@@ -289,8 +301,8 @@ Item {
                     Item {
                         id: singleMonitorZoom
                         anchors.centerIn: parent
-                        width: 380
-                        height: 280
+                        width: window.s(380)
+                        height: window.s(280)
                         
                         property real baseScale: Math.min(1.0, 2200 / window.currentSimW)
                         scale: baseScale * window.monitorScale
@@ -299,9 +311,9 @@ Item {
 
                         Rectangle {
                             id: deskSurface
-                            width: 1000
-                            height: 14
-                            radius: 6
+                            width: window.s(1000)
+                            height: window.s(14)
+                            radius: window.s(6)
                             anchors.top: standBase.bottom
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: window.mantle
@@ -309,51 +321,51 @@ Item {
                             border.width: 1
 
                             Rectangle { 
-                                width: 24
-                                height: 350
-                                radius: 4
+                                width: window.s(24)
+                                height: window.s(350)
+                                radius: window.s(4)
                                 color: window.crust
                                 anchors.top: parent.bottom
-                                anchors.topMargin: -5
+                                anchors.topMargin: window.s(-5)
                                 anchors.left: parent.left
-                                anchors.leftMargin: 100
+                                anchors.leftMargin: window.s(100)
                                 z: -1 
                             }
                             Rectangle { 
-                                width: 24
-                                height: 350
-                                radius: 4
+                                width: window.s(24)
+                                height: window.s(350)
+                                radius: window.s(4)
                                 color: window.crust
                                 anchors.top: parent.bottom
-                                anchors.topMargin: -5
+                                anchors.topMargin: window.s(-5)
                                 anchors.right: parent.right
-                                anchors.rightMargin: 100
+                                anchors.rightMargin: window.s(100)
                                 z: -1 
                             }
                         }
 
                         Rectangle {
                             id: standBase
-                            width: 130
-                            height: 8
-                            radius: 4
+                            width: window.s(130)
+                            height: window.s(8)
+                            radius: window.s(4)
                             anchors.bottom: parent.bottom
-                            anchors.bottomMargin: 20
+                            anchors.bottomMargin: window.s(20)
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: window.surface1
                         }
                         
                         Rectangle {
                             id: standNeck
-                            width: 34
-                            height: 70
+                            width: window.s(34)
+                            height: window.s(70)
                             anchors.bottom: standBase.top
                             anchors.horizontalCenter: parent.horizontalCenter
                             color: window.surface0
                             Rectangle { 
-                                width: 10
-                                height: 30
-                                radius: 5
+                                width: window.s(10)
+                                height: window.s(30)
+                                radius: window.s(5)
                                 anchors.centerIn: parent
                                 color: window.base 
                             }
@@ -361,23 +373,23 @@ Item {
 
                         Rectangle {
                             id: screenBezel
-                            width: 140 + (180 * (window.currentSimW / 1920))
-                            height: 90 + (90 * (window.currentSimH / 1080))
+                            width: window.s(140) + (window.s(180) * (window.currentSimW / 1920))
+                            height: window.s(90) + (window.s(90) * (window.currentSimH / 1080))
                             anchors.bottom: standNeck.top
-                            anchors.bottomMargin: -10
+                            anchors.bottomMargin: window.s(-10)
                             anchors.horizontalCenter: parent.horizontalCenter
-                            radius: 12
+                            radius: window.s(12)
                             color: window.crust
                             border.color: window.surface2
-                            border.width: 2
+                            border.width: window.s(2)
                             
                             Behavior on width { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
                             Behavior on height { NumberAnimation { duration: 600; easing.type: Easing.OutQuint } }
 
                             Rectangle {
                                 anchors.fill: parent
-                                anchors.margins: 10
-                                radius: 6
+                                anchors.margins: window.s(10)
+                                radius: window.s(6)
                                 color: window.surface0
                                 clip: true
 
@@ -404,10 +416,10 @@ Item {
                                         anchors.centerIn: parent
                                         rows: 10
                                         columns: 15
-                                        spacing: 20
+                                        spacing: window.s(20)
                                         Repeater { 
                                             model: 150
-                                            Rectangle { width: 2; height: 2; radius: 1; color: Qt.alpha(window.text, 0.1) } 
+                                            Rectangle { width: window.s(2); height: window.s(2); radius: window.s(1); color: Qt.alpha(window.text, 0.1) } 
                                         } 
                                     }
 
@@ -417,11 +429,11 @@ Item {
                                         
                                         ColumnLayout {
                                             anchors.centerIn: parent
-                                            spacing: 4
+                                            spacing: window.s(4)
                                             Text { 
                                                 Layout.alignment: Qt.AlignHCenter
                                                 font.family: "Iosevka Nerd Font"
-                                                font.pixelSize: 38
+                                                font.pixelSize: window.s(38)
                                                 color: window.selectedResAccent
                                                 text: "󰍹"
                                                 Behavior on color { ColorAnimation { duration: 400 } } 
@@ -430,14 +442,14 @@ Item {
                                                 Layout.alignment: Qt.AlignHCenter
                                                 font.family: "JetBrains Mono"
                                                 font.weight: Font.Bold
-                                                font.pixelSize: 16
+                                                font.pixelSize: window.s(16)
                                                 color: window.text
                                                 text: monitorsModel.count > 0 ? monitorsModel.get(0).name : "Unknown" 
                                             }
                                             Text { 
                                                 Layout.alignment: Qt.AlignHCenter
                                                 font.family: "JetBrains Mono"
-                                                font.pixelSize: 12
+                                                font.pixelSize: window.s(12)
                                                 color: window.subtext0
                                                 text: window.currentSimW + "x" + window.currentSimH + " @ " + (monitorsModel.count > 0 ? monitorsModel.get(0).rate : "60") + "Hz" 
                                             }
@@ -458,8 +470,8 @@ Item {
 
                     Item {
                         id: multiMonitorView
-                        width: 380
-                        height: 280
+                        width: window.s(380)
+                        height: window.s(280)
                         anchors.centerIn: parent
                         clip: true 
 
@@ -467,14 +479,14 @@ Item {
                             anchors.centerIn: parent
                             rows: 25
                             columns: 34
-                            spacing: 18
+                            spacing: window.s(18)
                             Repeater { 
                                 model: 850
-                                Rectangle { width: 2; height: 2; radius: 1; color: Qt.alpha(window.text, 0.1) } 
+                                Rectangle { width: window.s(2); height: window.s(2); radius: window.s(1); color: Qt.alpha(window.text, 0.1) } 
                             }
                         }
 
-                        // Perfect mathematical scale: Centers the Bounding Box of ALL monitors
+                        // Target Scale computes virtual bounds -> Maps to scaled physical layout
                         property real targetScale: {
                             if (monitorsModel.count < 2) return 1.0;
                             let minX = 999999, minY = 999999, maxX = -999999, maxY = -999999;
@@ -493,10 +505,9 @@ Item {
                             let requiredW = (maxX - minX) + 80;
                             let requiredH = (maxY - minY) + 80;
                             
-                            return Math.min(1.8, Math.min(340 / requiredW, 240 / requiredH));
+                            return Math.min(1.8 * scaler.baseScale, Math.min(window.s(340) / requiredW, window.s(240) / requiredH));
                         }
 
-                        // Centering math: Keep the bounding box of ALL monitors perfectly centered in the 380x280 view
                         property real offsetX: {
                             if (monitorsModel.count < 2) return 0;
                             let minX = 999999, maxX = -999999;
@@ -510,7 +521,7 @@ Item {
                             }
                             
                             let centerX = minX + (maxX - minX) / 2;
-                            return 190 - (centerX * targetScale);
+                            return window.s(190) - (centerX * targetScale);
                         }
 
                         property real offsetY: {
@@ -526,7 +537,7 @@ Item {
                             }
                             
                             let centerY = minY + (maxY - minY) / 2;
-                            return 140 - (centerY * targetScale);
+                            return window.s(140) - (centerY * targetScale);
                         }
 
                         Item {
@@ -544,6 +555,7 @@ Item {
                                 id: monitorRepeater
                                 model: monitorsModel
 
+                                // NOTE: The items inside the transform node remain strictly virtual
                                 Item {
                                     property bool isActive: window.activeEditIndex === index
 
@@ -707,9 +719,9 @@ Item {
                 anchors.left: leftVisualArea.right
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter 
-                anchors.leftMargin: 10
-                anchors.rightMargin: 30
-                height: 310
+                anchors.leftMargin: window.s(10)
+                anchors.rightMargin: window.s(30)
+                height: window.s(310)
 
                 opacity: window.introProgress
                 transform: Translate { y: window.uiYOffset }
@@ -738,23 +750,23 @@ Item {
                 Rectangle {
                     id: highlightFlash
                     anchors.fill: rightSideContainer
-                    anchors.margins: -10
+                    anchors.margins: window.s(-10)
                     color: window.selectedResAccent
                     opacity: 0.0
-                    radius: 12
+                    radius: window.s(12)
                 }
 
                 ColumnLayout {
                     id: rightSideContainer
                     anchors.fill: parent
-                    spacing: 12
+                    spacing: window.s(12)
 
                     // --- RESOLUTION CARDS SECTION ---
                     GridLayout {
                         Layout.fillWidth: true
                         columns: 2
-                        columnSpacing: 10
-                        rowSpacing: 10
+                        columnSpacing: window.s(10)
+                        rowSpacing: window.s(10)
 
                         Repeater {
                             model: [
@@ -770,8 +782,8 @@ Item {
 
                             delegate: Rectangle {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 48
-                                radius: 12
+                                Layout.preferredHeight: window.s(48)
+                                radius: window.s(12)
                                 
                                 property bool isSel: {
                                     if (monitorsModel.count === 0) return false;
@@ -789,13 +801,13 @@ Item {
 
                                 RowLayout {
                                     anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 8
+                                    anchors.margins: window.s(12)
+                                    spacing: window.s(8)
                                     
                                     Text { 
                                         font.family: "JetBrains Mono"
                                         font.weight: isSel ? Font.Black : Font.Bold
-                                        font.pixelSize: 16
+                                        font.pixelSize: window.s(16)
                                         color: isSel ? accentColor : window.text
                                         text: modelData.label
                                         Behavior on color { ColorAnimation { duration: 200 } } 
@@ -805,7 +817,7 @@ Item {
                                     
                                     Text { 
                                         font.family: "JetBrains Mono"
-                                        font.pixelSize: 12
+                                        font.pixelSize: window.s(12)
                                         color: isSel ? window.text : window.overlay0
                                         text: modelData.resW + "x" + modelData.resH
                                         Behavior on color { ColorAnimation { duration: 200 } } 
@@ -833,15 +845,15 @@ Item {
                         }
                     }
 
-                    Item { Layout.preferredHeight: 15 } 
+                    Item { Layout.preferredHeight: window.s(15) } 
 
                     // --- REFRESH RATE SLIDER SECTION ---
                     Item {
                         id: sliderContainer
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 50
-                        Layout.leftMargin: 10
-                        Layout.rightMargin: 10
+                        Layout.preferredHeight: window.s(50)
+                        Layout.leftMargin: window.s(10)
+                        Layout.rightMargin: window.s(10)
                         
                         property var rates: [60, 75, 100, 120, 144, 165, 180, 240, 360]
                         property var rateColors: [window.red, window.mauve, window.blue, window.sapphire, window.teal, window.pink, window.yellow, window.green, window.peach]
@@ -872,15 +884,15 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            anchors.verticalCenterOffset: -10
-                            height: 12
-                            radius: 6
+                            anchors.verticalCenterOffset: window.s(-10)
+                            height: window.s(12)
+                            radius: window.s(6)
                             color: window.mantle
                             border.color: window.crust
                             border.width: 1
                             
                             Rectangle { 
-                                width: knob.x + knob.width / 2
+                                width: Math.max(knob.width, knob.x + knob.width / 2)
                                 height: parent.height
                                 radius: parent.radius
                                 color: window.selectedRateAccent
@@ -892,13 +904,13 @@ Item {
                             model: sliderContainer.rates.length
                             Item {
                                 x: (index / (sliderContainer.rates.length - 1)) * track.width
-                                y: track.y + 20
+                                y: track.y + window.s(20)
                                 
                                 Text { 
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: sliderContainer.rates[index]
                                     font.family: "JetBrains Mono"
-                                    font.pixelSize: 13
+                                    font.pixelSize: window.s(13)
                                     font.weight: sliderContainer.currentIndex === index ? Font.Bold : Font.Normal
                                     color: sliderContainer.currentIndex === index ? window.selectedRateAccent : window.overlay0
                                     Behavior on color { ColorAnimation { duration: 200 } } 
@@ -908,9 +920,9 @@ Item {
 
                         Rectangle {
                             id: knob
-                            width: 24
-                            height: 24
-                            radius: 12
+                            width: window.s(24)
+                            height: window.s(24)
+                            radius: window.s(12)
                             color: sliderMa.containsPress ? window.selectedRateAccent : window.text
                             anchors.verticalCenter: track.verticalCenter
                             x: (sliderContainer.visualPct * track.width) - width / 2
@@ -929,7 +941,7 @@ Item {
                         MouseArea {
                             id: sliderMa
                             anchors.fill: parent
-                            anchors.margins: -15
+                            anchors.margins: window.s(-15)
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
 
@@ -967,9 +979,9 @@ Item {
                 id: applyButtonContainer
                 anchors.bottom: parent.bottom
                 anchors.right: parent.right
-                anchors.margins: 30
-                width: 170
-                height: 50
+                anchors.margins: window.s(30)
+                width: window.s(170)
+                height: window.s(50)
                 
                 opacity: window.introProgress
                 transform: Translate { y: window.uiYOffset }
@@ -981,7 +993,7 @@ Item {
                     shadowColor: window.selectedRateAccent
                     shadowBlur: window.applyHovered ? 1.2 : 0.6
                     shadowOpacity: window.applyHovered ? 0.6 : 0.2
-                    shadowVerticalOffset: 4
+                    shadowVerticalOffset: window.s(4)
                     z: -1
                     Behavior on shadowBlur { NumberAnimation { duration: 300 } } 
                     Behavior on shadowOpacity { NumberAnimation { duration: 300 } } 
@@ -991,7 +1003,7 @@ Item {
                 Rectangle {
                     id: applyBtn
                     anchors.fill: parent
-                    radius: 25
+                    radius: window.s(25)
                     
                     gradient: Gradient { 
                         orientation: Gradient.Horizontal
@@ -1013,7 +1025,7 @@ Item {
                     Rectangle {
                         id: flashRect
                         anchors.fill: parent
-                        radius: 25
+                        radius: window.s(25)
                         color: window.text
                         opacity: 0.0
                         PropertyAnimation on opacity { 
@@ -1026,11 +1038,11 @@ Item {
 
                     RowLayout {
                         anchors.centerIn: parent
-                        spacing: 8
+                        spacing: window.s(8)
                         
                         Text { 
                             font.family: "Iosevka Nerd Font"
-                            font.pixelSize: 20
+                            font.pixelSize: window.s(20)
                             color: window.crust
                             text: "󰸵" 
                         }
@@ -1038,7 +1050,7 @@ Item {
                         Text { 
                             font.family: "JetBrains Mono"
                             font.weight: Font.Black
-                            font.pixelSize: 14
+                            font.pixelSize: window.s(14)
                             color: window.crust
                             text: monitorsModel.count > 1 ? "Apply All" : "Apply" 
                         }
@@ -1064,14 +1076,9 @@ Item {
 
                         if (monitorsModel.count === 0) return;
 
-                        let configLines = [];
-
                         if (monitorsModel.count === 1) {
                             let mon = monitorsModel.get(0);
                             let monitorStr = mon.name + "," + mon.resW + "x" + mon.resH + "@" + mon.rate + ",0x0," + mon.sysScale;
-                            
-                            configLines.push("monitor = " + monitorStr);
-                            
                             Quickshell.execDetached(["notify-send", "Display Update", "Applied: " + mon.resW + "x" + mon.resH + " @ " + mon.rate + "Hz"]);
                             Quickshell.execDetached(["sh", "-c", "hyprctl keyword monitor " + monitorStr]);
                         } else {
@@ -1147,23 +1154,17 @@ Item {
                                 r.y = Math.round(r.y - finalMinY);
                                 
                                 let monitorStr = r.name + "," + r.resW + "x" + r.resH + "@" + r.rate + "," + r.x + "x" + r.y + "," + r.sysScale;
-                                
-                                configLines.push("monitor = " + monitorStr);
                                 batchCmds.push("keyword monitor " + monitorStr);
                                 summaryString += r.name + " ";
                             }
                             
                             let fullCommand = "hyprctl --batch '" + batchCmds.join(" ; ") + "'";
-                            let postReloadCmd = "awww kill ; sleep 0.1 ; awww-daemon &";
+                            
+                            let postReloadCmd = "swww kill ; sleep 0.2 ; swww-daemon &";
                             
                             Quickshell.execDetached(["sh", "-c", fullCommand + " ; " + postReloadCmd]);
                             Quickshell.execDetached(["notify-send", "Display Update", "Applied layout for: " + summaryString]);
                         }
-                        
-                        // ========== PERSIST TO HYPRLAND.CONF ==========
-                        let configString = configLines.join("\\n");
-                        let awkCmd = `awk 'BEGIN {p=0} /^monitor[ \\t]*=/ {next} /◈ MONITORS/ {p=1} p==1 && /^# ━/ {print; print "\\n${configString}"; p=0; next} {print}' ~/.config/hypr/hyprland.conf > /tmp/hconf && mv /tmp/hconf ~/.config/hypr/hyprland.conf`;
-                        Quickshell.execDetached(["sh", "-c", awkCmd]);
                     }
                 }
             }

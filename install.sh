@@ -3,34 +3,10 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.0.7"
+DOTS_VERSION="1.0.8"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
-mkdir -p "$(dirname "$VERSION_FILE")"
-
-if [ -f "$VERSION_FILE" ]; then
-    LOCAL_VERSION=$(cat "$VERSION_FILE")
-else
-    LOCAL_VERSION="Not Installed"
-fi
-
-# ==============================================================================
-# Terminal UI Colors & Formatting
-# ==============================================================================
-RESET="\e[0m"
-BOLD="\e[1m"
-DIM="\e[2m"
-C_BLUE="\e[34m"
-C_CYAN="\e[36m"
-C_GREEN="\e[32m"
-C_YELLOW="\e[33m"
-C_RED="\e[31m"
-C_MAGENTA="\e[35m"
-
-# ==============================================================================
-# Global Variables & Initial States
-# ==============================================================================
-# Uses standard XDG picture directory if available, otherwise defaults to ~/Pictures
+# Global Variables & Initial States (Defaults)
 WALLPAPER_DIR="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/Wallpapers"
 WEATHER_API_KEY=""
 WEATHER_CITY_ID=""
@@ -54,9 +30,37 @@ VISITED_WEATHER=false
 VISITED_DRIVERS=false
 VISITED_KEYBOARD=false
 
-# Keyboard State
+# Keyboard State Defaults
 KB_LAYOUTS="us"
+KB_LAYOUTS_DISPLAY="English (US)"
 KB_OPTIONS="grp:alt_shift_toggle"
+
+mkdir -p "$(dirname "$VERSION_FILE")"
+
+# Load previous choices if the file exists
+if [ -f "$VERSION_FILE" ]; then
+    source "$VERSION_FILE"
+    if [ -n "$LOCAL_VERSION" ]; then
+        if [ -n "$KB_LAYOUTS" ]; then VISITED_KEYBOARD=true; fi
+        if [ -n "$WEATHER_API_KEY" ]; then VISITED_WEATHER=true; fi
+        if [ "$DRIVER_CHOICE" != "None (Skipped)" ] && [ -n "$DRIVER_CHOICE" ]; then VISITED_DRIVERS=true; fi
+    fi
+else
+    LOCAL_VERSION="Not Installed"
+fi
+
+# ==============================================================================
+# Terminal UI Colors & Formatting
+# ==============================================================================
+RESET="\e[0m"
+BOLD="\e[1m"
+DIM="\e[2m"
+C_BLUE="\e[34m"
+C_CYAN="\e[36m"
+C_GREEN="\e[32m"
+C_YELLOW="\e[33m"
+C_RED="\e[31m"
+C_MAGENTA="\e[35m"
 
 # ==============================================================================
 # Package Arrays
@@ -170,9 +174,16 @@ draw_header() {
  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ 
 EOF
     printf "${RESET}\n"
+
+    # OSC 8 Escape Sequences for Clickable Hyperlinks
+    local OSC8_GH="\e]8;;https://github.com/ilyamiro/imperative-dots.git\e\\"
+    local OSC8_TW="\e]8;;https://twitter.com/ilyamirox\e\\"
+    local OSC8_RD="\e]8;;https://reddit.com/r/ilyamiro1\e\\"
+    local OSC8_END="\e]8;;\e\\"
+
     printf "\033[K${C_BLUE} -----------------------------------------------------------------${RESET}\n"
-    printf "\033[K${BOLD}${C_GREEN} GitHub:${RESET}  https://github.com/ilyamiro/imperative-dots.git\n"
-    printf "\033[K${BOLD}${C_CYAN} Twitter:${RESET} @ilyamirox  |  ${BOLD}${C_RED}Reddit:${RESET} r/ilyamiro1\n"
+    printf "\033[K${BOLD}${C_GREEN} GitHub:${RESET}  ${OSC8_GH}https://github.com/ilyamiro/imperative-dots.git${OSC8_END}\n"
+    printf "\033[K${BOLD}${C_CYAN} Twitter:${RESET} ${OSC8_TW}@ilyamirox${OSC8_END}  |  ${BOLD}${C_RED}Reddit:${RESET} ${OSC8_RD}r/ilyamiro1${OSC8_END}\n"
     printf "\033[K${C_BLUE} -----------------------------------------------------------------${RESET}\n"
     printf "\033[K${BOLD} User:           ${RESET} %s\n" "$USER_NAME"
     printf "\033[K${BOLD} OS:             ${RESET} %s\n" "$OS_NAME"
@@ -341,16 +352,55 @@ manage_drivers() {
 }
 
 manage_keyboard() {
+    local available_layouts=(
+        "us - English (US)" "gb - English (UK)" "ru - Russian" "ua - Ukrainian"
+        "de - German" "fr - French" "es - Spanish" "it - Italian" "pl - Polish"
+        "pt - Portuguese" "br - Portuguese (Brazil)" "se - Swedish" "no - Norwegian"
+        "dk - Danish" "fi - Finnish" "nl - Dutch" "tr - Turkish" "cz - Czech"
+        "hu - Hungarian" "ro - Romanian" "jp - Japanese" "kr - Korean" "cn - Chinese"
+    )
+    local selected_codes=()
+    local selected_names=()
+
     while true; do
         draw_header
         echo -e "${BOLD}${C_CYAN}=== Keyboard Layout Configuration ===${RESET}\n"
-        echo -e "Enter the keyboard layouts you want to use, separated by commas."
-        echo -e "Examples: ${C_GREEN}us${RESET}, ${C_GREEN}us,ru${RESET}, ${C_GREEN}us,de,fr${RESET}\n"
+        
+        if [ ${#selected_codes[@]} -gt 0 ]; then
+            echo -e "Currently added: ${C_GREEN}$(IFS=', '; echo "${selected_names[*]}")${RESET}\n"
+        fi
 
-        read -p "Keyboard Layouts (default 'us'): " input_layouts
-        [[ -z "$input_layouts" ]] && input_layouts="us"
+        local choice
+        choice=$(printf "%s\n" "Done (Finish Selection)" "${available_layouts[@]}" | fzf \
+            --layout=reverse \
+            --border=rounded \
+            --margin=1,2 \
+            --height=20 \
+            --prompt=" Add Layout > " \
+            --pointer=">" \
+            --header=" Select a language to add, or select Done ")
 
-        echo -e "\n${C_CYAN}Choose a key combination to switch between layouts:${RESET}"
+        if [[ -z "$choice" || "$choice" == *"Done"* ]]; then
+            # Enforce at least one layout
+            if [ ${#selected_codes[@]} -eq 0 ]; then
+                selected_codes=("us")
+                selected_names=("English (US)")
+            fi
+            break
+        fi
+
+        local code=$(echo "$choice" | awk '{print $1}')
+        local name=$(echo "$choice" | cut -d'-' -f2- | sed 's/^ //')
+
+        selected_codes+=("$code")
+        selected_names+=("$name")
+    done
+
+    while true; do
+        draw_header
+        echo -e "${BOLD}${C_CYAN}=== Keyboard Layout Configuration ===${RESET}\n"
+        echo -e "Currently added: ${C_GREEN}$(IFS=', '; echo "${selected_names[*]}")${RESET}\n"
+        echo -e "${C_CYAN}Choose a key combination to switch between layouts:${RESET}"
         
         local options="1. Alt + Shift (grp:alt_shift_toggle)\n"
         options+="2. Win + Space (grp:win_space_toggle)\n"
@@ -383,10 +433,11 @@ manage_keyboard() {
             *) kb_opt="grp:alt_shift_toggle" ;;
         esac
 
-        KB_LAYOUTS="$input_layouts"
+        KB_LAYOUTS=$(IFS=','; echo "${selected_codes[*]}")
+        KB_LAYOUTS_DISPLAY=$(IFS=', '; echo "${selected_names[*]}")
         KB_OPTIONS="$kb_opt"
 
-        echo -e "\n${C_GREEN}Keyboard configured: Layouts = $KB_LAYOUTS | Switch = ${KB_OPTIONS:-None}${RESET}"
+        echo -e "\n${C_GREEN}Keyboard configured: Layouts = $KB_LAYOUTS_DISPLAY | Switch = ${KB_OPTIONS:-None}${RESET}"
         sleep 1.5
         VISITED_KEYBOARD=true
         break
@@ -455,7 +506,7 @@ set_weather_api() {
         echo -e "  2. Create a free account and log in."
         echo -e "  3. Click your profile name -> 'My API keys'."
         echo -e "  4. Generate a new key and paste it below."
-        echo -e "  ${BOLD}${C_YELLOW}Note: New API keys may take a couple of hours to activate on OpenWeather's side.${RESET}\n"
+        echo -e "  ${BOLD}${C_YELLOW}Note: New API keys may take a couple of hours to activate. This installer will NOT block you from using a fresh key.${RESET}\n"
         
         read -p "Enter your OpenWeather API Key (or press Enter to skip): " input_key
         
@@ -472,52 +523,39 @@ set_weather_api() {
             fi
             continue
         fi
+
+        # Soft validation to ensure it looks like a valid key without querying the API
+        input_key=$(echo "$input_key" | tr -d ' ')
+        if [[ ${#input_key} -ne 32 ]]; then
+            echo -e "\n${C_YELLOW}Warning: OpenWeather API keys are typically exactly 32 characters long.${RESET}"
+            echo -e "${C_YELLOW}Your key is ${#input_key} characters long.${RESET}"
+            echo -n "Are you sure this key is correct? (y/n): "
+            read -r confirm_key
+            if [[ ! "$confirm_key" =~ ^[Yy]$ ]]; then
+                continue
+            fi
+        fi
         
         WEATHER_API_KEY="$input_key"
         
-        echo -e "\n${C_CYAN}Let's set your location using coordinates.${RESET}"
-        echo -e "Please Google your city (e.g., 'London coordinates') and copy the latitude and longitude."
-        echo -e "Use decimal format (e.g., Lat: 51.5072, Lon: -0.1276)."
-        echo -e "${C_YELLOW}Make sure to include the negative sign (-) if applicable!${RESET}\n"
+        echo -e "\n${C_CYAN}Let's set your location using your City ID.${RESET}"
+        echo -e "1. Go to ${C_BLUE}https://openweathermap.org/${RESET} and search for your city."
+        echo -e "2. Look at the URL in your browser. It will look something like this:"
+        echo -e "   ${DIM}https://openweathermap.org/city/${RESET}${BOLD}2643743${RESET}"
+        echo -e "3. Copy that number at the end (the City ID) and paste it below.\n"
         
-        read -p "Enter Latitude: " input_lat
-        read -p "Enter Longitude: " input_lon
+        read -p "Enter City ID: " input_id
 
-        if [[ -z "$input_lat" || -z "$input_lon" ]]; then
-            echo -e "${C_RED}Coordinates cannot be empty.${RESET}"
+        if [[ -z "$input_id" || ! "$input_id" =~ ^[0-9]+$ ]]; then
+            echo -e "${C_RED}Invalid City ID. It must be a number.${RESET}"
             sleep 1.5
             continue
         fi
 
-        echo -e "\n${C_CYAN}Searching for the closest city ID based on coordinates...${RESET}"
-        
-        # Use the standard weather endpoint which returns the city ID directly based on coordinates
-        api_response=$(curl -s "https://api.openweathermap.org/data/2.5/weather?lat=${input_lat}&lon=${input_lon}&appid=${WEATHER_API_KEY}")
-        
-        # Validate API Key & Response
-        status_code=$(echo "$api_response" | jq -r '.cod | tostring')
-        if [[ "$status_code" != "200" ]]; then
-            error_msg=$(echo "$api_response" | jq -r '.message')
-            echo -e "${C_RED}API Error: ${error_msg}${RESET}"
-            echo -e "Please check your API key and coordinates, then try again.\n"
-            read -p "Press Enter to retry..."
-            continue
-        fi
-        
-        # Extract the ID and name
-        extracted_id=$(echo "$api_response" | jq -r '.id')
-        extracted_name=$(echo "$api_response" | jq -r '.name')
-        
-        if [[ "$extracted_id" == "null" || -z "$extracted_id" || "$extracted_id" == "0" ]]; then
-            echo -e "${C_RED}Could not find a valid City ID for those coordinates.${RESET}"
-            read -p "Press Enter to retry..."
-            continue
-        fi
-
-        WEATHER_CITY_ID="$extracted_id"
-        echo -e "${C_GREEN}Matched Location: ${extracted_name} (ID: ${WEATHER_CITY_ID})${RESET}\n"
+        WEATHER_CITY_ID="$input_id"
         
         # Ask for standard units
+        echo ""
         unit_choice=$(echo -e "metric (Celsius)\nimperial (Fahrenheit)\nstandard (Kelvin)" | fzf \
             --layout=reverse \
             --border=rounded \
@@ -530,8 +568,8 @@ set_weather_api() {
         WEATHER_UNIT=$(echo "$unit_choice" | awk '{print $1}')
         [[ -z "$WEATHER_UNIT" ]] && WEATHER_UNIT="metric"
         
-        echo -e "\n${C_GREEN}Weather configuration complete!${RESET}"
-        sleep 1.5
+        echo -e "\n${C_GREEN}Weather configuration complete! Widget will update once your key is activated by OpenWeather.${RESET}"
+        sleep 2.5
         VISITED_WEATHER=true
         break
     done
@@ -614,10 +652,10 @@ clear
 while true; do
     draw_header
     
-    # Progress checkmarks for strictly required submenus vs optional ones
+    # Progress checkmarks for submenus
     S_PKG=$( [ "$VISITED_PKGS" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${C_YELLOW}[-]${RESET}" )
-    S_OVW=$( [ "$VISITED_OVERVIEW" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${C_RED}[ ]${RESET}" )
-    S_WTH=$( [ "$VISITED_WEATHER" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${C_RED}[ ]${RESET}" )
+    S_OVW=$( [ "$VISITED_OVERVIEW" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${C_YELLOW}[-]${RESET}" )
+    S_WTH=$( [ "$VISITED_WEATHER" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${C_YELLOW}[-]${RESET}" )
     S_DRV=$( [ "$VISITED_DRIVERS" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${C_YELLOW}[-]${RESET}" )
     S_KBD=$( [ "$VISITED_KEYBOARD" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${C_RED}[ ]${RESET}" )
 
@@ -627,10 +665,10 @@ while true; do
 
     # Build the color-coded menu string
     MENU_ITEMS="1. $S_PKG ${C_GREEN}Manage Packages${RESET} [${#PKGS[@]} queued, Optional]\n"
-    MENU_ITEMS+="2. $S_OVW ${C_CYAN}Overview & Keybinds${RESET}\n"
-    MENU_ITEMS+="3. $S_WTH ${C_YELLOW}Set Weather API Key${RESET} [${API_DISPLAY}]\n"
-    MENU_ITEMS+="4. $S_DRV ${C_RED}[ DRIVERS ] Setup${RESET} [${DRIVER_CHOICE}]\n"
-    MENU_ITEMS+="5. $S_KBD ${C_BLUE}Keyboard Layout Setup${RESET} [${KB_LAYOUTS}]\n"
+    MENU_ITEMS+="2. $S_OVW ${C_CYAN}Overview & Keybinds${RESET} [Optional]\n"
+    MENU_ITEMS+="3. $S_WTH ${C_YELLOW}Set Weather API Key${RESET} [${API_DISPLAY}, Optional]\n"
+    MENU_ITEMS+="4. $S_DRV ${C_RED}[ DRIVERS ] Setup${RESET} [${DRIVER_CHOICE}, Optional]\n"
+    MENU_ITEMS+="5. $S_KBD ${C_BLUE}Keyboard Layout Setup${RESET} [${KB_LAYOUTS_DISPLAY:-$KB_LAYOUTS}]\n"
     MENU_ITEMS+="6. ${BOLD}${C_MAGENTA}START INSTALLATION${RESET}\n"
     MENU_ITEMS+="7. ${DIM}Exit${RESET}"
 
@@ -652,8 +690,8 @@ while true; do
         *"4"*) manage_drivers ;;
         *"5"*) manage_keyboard ;;
         *"6"*) 
-            if [ "$VISITED_OVERVIEW" = false ] || [ "$VISITED_WEATHER" = false ] || [ "$VISITED_KEYBOARD" = false ]; then
-                echo -e "\n${C_RED}[!] You must visit and configure Overview, Weather, and Keyboard submenus before starting.${RESET}"
+            if [ "$VISITED_KEYBOARD" = false ]; then
+                echo -e "\n${C_RED}[!] You must configure your Keyboard Layouts in the submenu before starting.${RESET}"
                 sleep 2.5
                 continue
             fi
@@ -956,18 +994,7 @@ if command -v fc-cache &> /dev/null; then
     printf "  -> Font cache updated %-21s ${C_GREEN}[ OK ]${RESET}\n" ""
 fi
 
-# --- 6. Apply TUI User Preferences ---
-echo -e "\n${C_CYAN}[ INFO ]${RESET} Writing User Preferences..."
-USER_PREFS_FILE="$TARGET_CONFIG_DIR/hypr/user_prefs.conf"
-mkdir -p "$(dirname "$USER_PREFS_FILE")"
-echo "# Auto-generated by install script" > "$USER_PREFS_FILE"
-
-if [ -n "$WALLPAPER_DIR" ]; then
-    echo "\$wallpaper_dir = $WALLPAPER_DIR" >> "$USER_PREFS_FILE"
-fi
-printf "  -> Preferences saved to user_prefs.conf ${C_GREEN}[ OK ]${RESET}\n"
-
-# --- 7. Adaptability Phase ---
+# --- 6. Adaptability Phase ---
 rm -f "$HOME/.cache/wallpaper_initialized" # if reinstalling
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Adapting configurations to your specific system..."
 
@@ -1089,9 +1116,19 @@ EOF
     fi
 fi
 
-# --- 8. Finalize Version Marker ---
-echo "$DOTS_VERSION" > "$VERSION_FILE"
-printf "  -> Version marker updated (v%s) %-7s ${C_GREEN}[ OK ]${RESET}\n" "$DOTS_VERSION" ""
+# --- 8. Finalize Version Marker & User State Persistence ---
+cat <<EOF > "$VERSION_FILE"
+LOCAL_VERSION="$DOTS_VERSION"
+WEATHER_API_KEY="$WEATHER_API_KEY"
+WEATHER_CITY_ID="$WEATHER_CITY_ID"
+WEATHER_UNIT="$WEATHER_UNIT"
+DRIVER_CHOICE="$DRIVER_CHOICE"
+KB_LAYOUTS="$KB_LAYOUTS"
+KB_LAYOUTS_DISPLAY="$KB_LAYOUTS_DISPLAY"
+KB_OPTIONS="$KB_OPTIONS"
+WALLPAPER_DIR="$WALLPAPER_DIR"
+EOF
+printf "  -> Configuration and version state saved %-7s ${C_GREEN}[ OK ]${RESET}\n" ""
 
 # ==============================================================================
 # Final Output

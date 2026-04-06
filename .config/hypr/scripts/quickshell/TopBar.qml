@@ -11,9 +11,10 @@ Variants {
     
     delegate: Component {
         PanelWindow {
-            id: barWindow
+        id: barWindow
+
+        required property var modelData
             
-	    required property var modelData
             // Bind this specific bar instance to the dynamically assigned screen
             screen: modelData
             
@@ -24,30 +25,16 @@ Variants {
             }
             
             // --- Responsive Scaling Logic ---
-            // Bases the scale on a 1920px width monitor. 
-            // - Shrinks dynamically for very small screens (SVGA/XGA) down to 35%.
-            // - Scales up progressively (non-linearly) for larger screens (2K/4K).
-            // --- Responsive Scaling Logic ---
-            property real baseScale: {
-                if (width <= 0) return 1.0;
-                let r = width / 1920.0; // Ratio relative to 1080p
-                
-                if (r <= 1.0) {
-                    // SCALING DOWN:
-                    // Using Math.pow(r, 0.85) makes the bar shrink "slower" than the screen does.
-                    // On a 1280px screen (r=0.66), a linear scale is 0.66, 
-                    // but this power scale keeps it at ~0.70.
-                    return Math.max(0.35, Math.pow(r, 0.85));
-                } else {
-                    // SCALING UP:
-                    // Keeps the existing progressive scaling for 2K/4K so it doesn't get huge.
-                    return Math.pow(r, 0.6);
-                }
+            Scaler {
+                id: scaler
+                currentWidth: barWindow.width
             }
+
+            property real baseScale: scaler.baseScale
             
-            // Helper function to dynamically scale any pixel value
+            // Helper function mapped to the external scaler
             function s(val) { 
-                return Math.round(val * barWindow.baseScale); 
+                return scaler.s(val); 
             }
 
             property int barHeight: s(48)
