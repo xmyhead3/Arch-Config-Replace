@@ -71,7 +71,7 @@ ARCH_PKGS=(
     "imagemagick" "wget" "file" "git" "psmisc"
     "matugen-bin" "ffmpeg" "fastfetch" "quickshell-git" "unzip" "python-websockets" "qt6-websockets"
     "grim" "playerctl" "satty" "yq" "xdg-desktop-portal-gtk" "slurp" "mpvpaper"
-    "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd-git" "nautilus"
+    "wmctrl" "power-profiles-daemon" "easyeffects" "swayosd-git" "nautilus" "lsp-plugins"
     # SDDM / Qt Dependencies to prevent greeter crashes on Wayland
     "qt5-wayland" "qt5-quickcontrols" "qt5-quickcontrols2" "qt5-graphicaleffects" "qt6-wayland"
 )
@@ -1025,10 +1025,6 @@ fi
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Enabling Core System Services..."
 sudo systemctl enable NetworkManager.service
 printf "  -> NetworkManager enabled %-20s ${C_GREEN}[ OK ]${RESET}\n" ""
-
-# Setup easyeffects as a daemon user service
-systemctl --user enable easyeffects.service --now 2>/dev/null || true
-printf "  -> EasyEffects user service enabled %-11s ${C_GREEN}[ OK ]${RESET}\n" ""
 
 # 7. Setup SDDM Theme and Config
 if [[ "$SETUP_SDDM_THEME" == true ]]; then
