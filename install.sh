@@ -1038,7 +1038,6 @@ EOF
     printf "  -> Saved Weather API config to .env %-7s ${C_GREEN}[ OK ]${RESET}\n" ""
 fi
 
-
 # Deploy Cava Wrapper
 mkdir -p "$HOME/.local/bin"
 if [ -f "$REPO_DIR/utils/bin/cava" ]; then
@@ -1155,30 +1154,37 @@ WP_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/wallpaper"
 
 # -> Desktop/Laptop Battery Adaptability <-
 QS_BAT_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/battery"
+REPO_BAT_DIR="$REPO_DIR/.config/hypr/scripts/quickshell/battery"
 echo -e "  -> Checking chassis for battery presence..."
 if ls /sys/class/power_supply/BAT* 1> /dev/null 2>&1; then
     echo -e "  -> ${C_GREEN}Battery detected.${RESET} Keeping Laptop Battery widget."
+    # Ensure the standard laptop widget is present
+    if [ -f "$REPO_BAT_DIR/BatteryPopup.qml" ]; then
+        cp -f "$REPO_BAT_DIR/BatteryPopup.qml" "$QS_BAT_DIR/BatteryPopup.qml" 2>/dev/null || true
+    fi
 else
     echo -e "  -> ${C_YELLOW}No battery detected (Desktop system).${RESET} Swapping to System Monitor widget."
-    if [ -f "$QS_BAT_DIR/BatteryPopupAlt.qml" ]; then
-        mv "$QS_BAT_DIR/BatteryPopup.qml" "$QS_BAT_DIR/BatteryPopup_laptop_backup.qml" 2>/dev/null || true
-        mv "$QS_BAT_DIR/BatteryPopupAlt.qml" "$QS_BAT_DIR/BatteryPopup.qml" 2>/dev/null || true
+    # Always overwrite with the Alt widget from the repo to prevent partial update conflicts
+    if [ -f "$REPO_BAT_DIR/BatteryPopupAlt.qml" ]; then
+        cp -f "$REPO_BAT_DIR/BatteryPopupAlt.qml" "$QS_BAT_DIR/BatteryPopup.qml" 2>/dev/null || true
     fi
 fi
 
 # -> Desktop/Ethernet Network Adaptability <-
 QS_NET_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/network"
+REPO_NET_DIR="$REPO_DIR/.config/hypr/scripts/quickshell/network"
 echo -e "  -> Checking for Wi-Fi interface..."
 if ls /sys/class/net/w* 1> /dev/null 2>&1 || iw dev 2>/dev/null | grep -q Interface; then
     echo -e "  -> ${C_GREEN}Wi-Fi module detected.${RESET} Keeping standard Network widget."
+    if [ -f "$REPO_NET_DIR/NetworkPopup.qml" ]; then
+        cp -f "$REPO_NET_DIR/NetworkPopup.qml" "$QS_NET_DIR/NetworkPopup.qml" 2>/dev/null || true
+    fi
 else
     echo -e "  -> ${C_YELLOW}No Wi-Fi module detected (Desktop/Ethernet).${RESET} Swapping to Alternate Network widget."
-    if [ -f "$QS_NET_DIR/NetworkPopupAlt.qml" ]; then
-        mv "$QS_NET_DIR/NetworkPopup.qml" "$QS_NET_DIR/NetworkPopup_wifi_backup.qml" 2>/dev/null || true
-        mv "$QS_NET_DIR/NetworkPopupAlt.qml" "$QS_NET_DIR/NetworkPopup.qml" 2>/dev/null || true
+    if [ -f "$REPO_NET_DIR/NetworkPopupAlt.qml" ]; then
+        cp -f "$REPO_NET_DIR/NetworkPopupAlt.qml" "$QS_NET_DIR/NetworkPopup.qml" 2>/dev/null || true
     fi
 fi
-
 
 if [ -f "$HYPR_CONF" ]; then
     
