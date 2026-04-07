@@ -9,7 +9,8 @@ import "../"
 
 Item {
     id: window
-    width: Screen.width
+    // Removed `width: Screen.width` to allow the widget to properly fit its container
+    // and prevent center-anchored items from being pushed off-screen.
     focus: true
 
     // --- Responsive Scaling Logic ---
@@ -851,7 +852,6 @@ Item {
 
                             Timer {
                                 running: true
-                                // INCREASED INTERVAL: This gives the central core time to pop up first
                                 interval: 600 + (index * 80) 
                                 onTriggered: floatCardDelegateContainer.isLoaded = true
                             }
@@ -874,8 +874,9 @@ Item {
                             x: (orbitContainer.width / 2) - (width / 2) + Math.cos(currentAngle) * animRadX
                             y: (orbitContainer.height / 2) - (height / 2) + Math.sin(currentAngle) * animRadY + Math.sin(window.globalOrbitAngle * 6) * window.s(12)
 
-                            scale: !isLoaded ? 0.0 : 1.0
+                            scale: !isLoaded ? 0.0 : (floatMa.containsMouse ? 1.08 : 1.0)
                             Behavior on scale { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+                            z: floatMa.containsMouse ? 10 : index
 
                             MultiEffect {
                                 source: floatCard
@@ -892,12 +893,13 @@ Item {
                                 id: floatCard
                                 anchors.fill: parent
                                 radius: window.s(14)
-                                color: "#0effffff"
+                                color: floatMa.containsMouse ? "#2affffff" : "#0effffff"
+                                Behavior on color { ColorAnimation { duration: 200 } }
                                 
                                 property string itemName: name
                                 property real nameImplicitWidth: baseNameText.implicitWidth
                                 property real nameContainerWidth: nameContainerBase.width
-                                property bool doMarquee: nameImplicitWidth > nameContainerWidth
+                                property bool doMarquee: floatMa.containsMouse && nameImplicitWidth > nameContainerWidth
                                 property real textOffset: 0
 
                                 SequentialAnimation on textOffset {
@@ -909,6 +911,7 @@ Item {
                                         duration: (floatCard.nameImplicitWidth + window.s(30)) * 35
                                     }
                                 }
+                                onDoMarqueeChanged: if (!doMarquee) textOffset = 0;
 
                                 Rectangle {
                                     anchors.fill: parent
@@ -916,6 +919,31 @@ Item {
                                     color: "transparent"
                                     border.width: 1
                                     border.color: window.surface2
+                                    visible: !floatMa.containsMouse
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: window.s(14)
+                                    opacity: floatMa.containsMouse ? 1.0 : 0.0
+                                    color: "transparent"
+                                    border.width: window.s(2)
+                                    Behavior on opacity { NumberAnimation { duration: 250 } }
+                                    
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        anchors.margins: window.s(2)
+                                        radius: window.s(12)
+                                        color: window.base
+                                        opacity: 0.9
+                                    }
+
+                                    gradient: Gradient {
+                                        orientation: Gradient.Horizontal
+                                        GradientStop { position: 0.0; color: Qt.lighter(window.activeColor, 1.15) }
+                                        GradientStop { position: 1.0; color: window.activeColor }
+                                    }
+                                    z: -1
                                 }
 
                                 RowLayout {
@@ -971,6 +999,13 @@ Item {
                                             text: action
                                         }
                                     }
+                                }
+
+                                MouseArea {
+                                    id: floatMa
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.ArrowCursor
                                 }
                             }
                         }
