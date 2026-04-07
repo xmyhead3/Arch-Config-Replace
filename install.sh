@@ -22,6 +22,7 @@ SETUP_SDDM_THEME=false
 DRIVER_CHOICE="None (Skipped)"
 DRIVER_PKGS=()
 HAS_NVIDIA_PROPRIETARY=false
+LAST_COMMIT=""
 
 # Submenu Completion Tracking
 VISITED_PKGS=false
@@ -843,15 +844,24 @@ echo -e "\n${C_CYAN}[ INFO ]${RESET} Setting up Dotfiles Repository..."
 REPO_URL="https://github.com/ilyamiro/imperative-dots.git"
 CLONE_DIR="$HOME/.hyprland-dots"
 
-# Check for a specific unique file so we don't mistake ~/.config for the repo
+# Determine Git versioning states for partial updates
+OLD_COMMIT=""
+NEW_COMMIT=""
+
 if [ -f "$(pwd)/install.sh" ] && [ -d "$(pwd)/.config" ]; then
     REPO_DIR="$(pwd)"
     echo "  -> Running from local repository at $REPO_DIR"
+    NEW_COMMIT=$(git -C "$REPO_DIR" rev-parse HEAD 2>/dev/null)
+    OLD_COMMIT="$LAST_COMMIT"
 else
     if [ -d "$CLONE_DIR" ]; then
+        OLD_COMMIT="${LAST_COMMIT:-$(git -C "$CLONE_DIR" rev-parse HEAD 2>/dev/null)}"
         git -C "$CLONE_DIR" pull > /dev/null 2>&1
+        NEW_COMMIT=$(git -C "$CLONE_DIR" rev-parse HEAD 2>/dev/null)
     else
+        OLD_COMMIT="$LAST_COMMIT"
         git clone "$REPO_URL" "$CLONE_DIR" > /dev/null 2>&1
+        NEW_COMMIT=$(git -C "$CLONE_DIR" rev-parse HEAD 2>/dev/null)
     fi
     REPO_DIR="$CLONE_DIR"
 fi
@@ -899,18 +909,76 @@ if [ "$INSTALL_NVIM" = true ]; then CONFIG_FOLDERS+=("nvim"); fi
 
 mkdir -p "$TARGET_CONFIG_DIR" "$BACKUP_DIR"
 
-for folder in "${CONFIG_FOLDERS[@]}"; do
-    TARGET_PATH="$TARGET_CONFIG_DIR/$folder"
-    SOURCE_PATH="$REPO_DIR/.config/$folder"
-
-    if [ -d "$SOURCE_PATH" ]; then
-        if [ -e "$TARGET_PATH" ] || [ -L "$TARGET_PATH" ]; then
-            mv "$TARGET_PATH" "$BACKUP_DIR/$folder"
-        fi
-        cp -r "$SOURCE_PATH" "$TARGET_PATH"
-        printf "  -> Copied %-31s ${C_GREEN}[ OK ]${RESET}\n" "$folder"
+DO_FULL_INSTALL=true
+if [ -n "$OLD_COMMIT" ] && [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+    DO_FULL_INSTALL=false
+    # Verify the OLD_COMMIT exists in git history to safely generate a diff
+    if git -C "$REPO_DIR" cat-file -t "$OLD_COMMIT" >/dev/null 2>&1; then
+        echo -e "  -> Found existing installation. Analyzing updates between ${C_YELLOW}${OLD_COMMIT::7}${RESET} and ${C_YELLOW}${NEW_COMMIT::7}${RESET}..."
+    else
+        DO_FULL_INSTALL=true
     fi
-done
+elif [ "$OLD_COMMIT" == "$NEW_COMMIT" ] && [ -n "$OLD_COMMIT" ]; then
+    DO_FULL_INSTALL=false
+    echo -e "  -> Repository is up to date (${C_YELLOW}${NEW_COMMIT::7}${RESET}). Only applying upstream changes (None found)."
+fi
+
+if [ "$DO_FULL_INSTALL" = true ]; then
+    echo "  -> Performing Full Install / Overwrite..."
+    for folder in "${CONFIG_FOLDERS[@]}"; do
+        TARGET_PATH="$TARGET_CONFIG_DIR/$folder"
+        SOURCE_PATH="$REPO_DIR/.config/$folder"
+
+        if [ -d "$SOURCE_PATH" ]; then
+            if [ -e "$TARGET_PATH" ] || [ -L "$TARGET_PATH" ]; then
+                mv "$TARGET_PATH" "$BACKUP_DIR/$folder"
+            fi
+            cp -r "$SOURCE_PATH" "$TARGET_PATH"
+            printf "  -> Copied %-31s ${C_GREEN}[ OK ]${RESET}\n" "$folder"
+        fi
+    done
+else
+    # Partial Update Logic (Git Diff)
+    CHANGED_FILES=""
+    if [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+        CHANGED_FILES=$(git -C "$REPO_DIR" diff --name-only --diff-filter=AM "$OLD_COMMIT" "$NEW_COMMIT" | grep "^\.config/")
+    fi
+    
+    if [ -n "$CHANGED_FILES" ]; then
+        echo -e "  -> Performing ${C_GREEN}Partial Update${RESET} based on upstream changes..."
+        echo "$CHANGED_FILES" | while IFS= read -r file; do
+            FOLDER_NAME=$(echo "$file" | cut -d'/' -f2)
+            
+            # Check if this changed file belongs to the folders we actually manage
+            valid_folder=false
+            for f in "${CONFIG_FOLDERS[@]}"; do
+                if [ "$f" == "$FOLDER_NAME" ]; then
+                    valid_folder=true
+                    break
+                fi
+            done
+            
+            if [ "$valid_folder" = true ]; then
+                SOURCE_FILE="$REPO_DIR/$file"
+                TARGET_FILE="$HOME/$file"
+                REL_PATH="${file#\.config/}"
+                
+                if [ -f "$TARGET_FILE" ]; then
+                    # Backup specifically modified files retaining the folder structure
+                    mkdir -p "$(dirname "$BACKUP_DIR/$REL_PATH")"
+                    cp "$TARGET_FILE" "$BACKUP_DIR/$REL_PATH"
+                fi
+                
+                mkdir -p "$(dirname "$TARGET_FILE")"
+                cp "$SOURCE_FILE" "$TARGET_FILE"
+                echo "    -> Updated: $file"
+            fi
+        done
+        printf "  -> Partial update complete %-21s ${C_GREEN}[ OK ]${RESET}\n" ""
+    else
+        echo "  -> No target config files were changed upstream. Local files kept intact."
+    fi
+fi
 
 if [[ -n "$WEATHER_API_KEY" && "$WEATHER_API_KEY" != "Skipped" ]]; then
     ENV_TARGET_DIR="$TARGET_CONFIG_DIR/hypr/scripts/quickshell/calendar"
@@ -1164,6 +1232,7 @@ fi
 # --- 8. Finalize Version Marker & User State Persistence ---
 cat <<EOF > "$VERSION_FILE"
 LOCAL_VERSION="$DOTS_VERSION"
+LAST_COMMIT="$NEW_COMMIT"
 WEATHER_API_KEY="$WEATHER_API_KEY"
 WEATHER_CITY_ID="$WEATHER_CITY_ID"
 WEATHER_UNIT="$WEATHER_UNIT"

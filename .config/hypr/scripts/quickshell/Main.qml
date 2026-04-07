@@ -21,9 +21,6 @@ PanelWindow {
 
     visible: isVisible
 
-    // --- THE FIX: WAYLAND MASKING ---
-    // Physically punches a hole in the window's input region at the OS level.
-    // Clicks in this top area will pass completely through to the TopBar below.
     mask: Region { item: topBarHole; intersection: Intersection.Xor }
     
     Item {
