@@ -78,9 +78,8 @@ if command -v swaync-client &> /dev/null; then
     swaync-client -rs
 fi
 
-# Putting swayosd reload into the background to not clutter the reloading process
-if systemctl --user is-active --quiet swayosd.service; then
-    systemctl --user restart swayosd.service &
-fi
+# Restart swayosd-server in the background
+killall swayosd-server 2>/dev/null
+swayosd-server --top-margin 0.9 --style "$HOME/.config/swayosd/style.css" > /dev/null 2>&1 &
 
 wait

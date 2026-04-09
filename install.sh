@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.0.15"
+DOTS_VERSION="1.0.16"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 # Global Variables & Initial States (Defaults)
@@ -1052,33 +1052,10 @@ sudo systemctl --global enable pipewire wireplumber pipewire-pulse 2>/dev/null |
 # Attempt to start it locally if DBUS is available (fails silently in TTY, which is fine since --global catches the next login)
 systemctl --user start pipewire wireplumber pipewire-pulse 2>/dev/null || true
 
-# --- Create and enable SwayOSD user service ---
-sudo systemctl enable --now swayosd-libinput-backend.service
-SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
-mkdir -p "$SYSTEMD_USER_DIR"
-cat <<EOF > "$SYSTEMD_USER_DIR/swayosd.service"
-[Unit]
-Description=SwayOSD Service
-PartOf=graphical-session.target
-After=graphical-session.target
-ConditionEnvironment=WAYLAND_DISPLAY
+# --- Enable SwayOSD libinput backend ---
+sudo systemctl enable --now swayosd-libinput-backend.service 2>/dev/null || true
+printf "  -> SwayOSD libinput backend enabled %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
 
-[Service]
-Type=simple
-ExecStart=/usr/bin/swayosd-server --top-margin 0.9 --style ${HOME}/.config/swayosd/style.css
-Restart=on-failure
-RestartSec=2
-StartLimitIntervalSec=0
-
-[Install]
-WantedBy=graphical-session.target
-EOF
-
-systemctl --user daemon-reload 2>/dev/null || true
-systemctl --user enable swayosd.service 2>/dev/null || true
-# Removed the immediate 'start' command. Systemd will now gracefully 
-# start it on its own once Hyprland/Wayland is actually ready.
-printf "  -> SwayOSD user service configured %-17s ${C_GREEN}[ OK ]${RESET}\n" ""
 
 if [ "$INSTALL_ZSH" = true ] && command -v zsh &> /dev/null; then
     if [ -f "$HOME/.zshrc" ]; then
