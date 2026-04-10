@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.0.19"
+DOTS_VERSION="1.0.20"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 # Global Variables & Initial States (Defaults)
@@ -1190,6 +1190,10 @@ if [ "$INSTALL_ZSH" = true ] && command -v zsh &> /dev/null; then
     chsh -s $(which zsh) "$USER"
 
     if [ -f "$TARGET_CONFIG_DIR/zsh/user_aliases.zsh" ]; then
+        # Prevent appending multiple times
+        sed -i '/# Load User Aliases/d' "$HOME/.zshrc"
+        sed -i "\|source $TARGET_CONFIG_DIR/zsh/user_aliases.zsh|d" "$HOME/.zshrc"
+
         echo -e "\n# Load User Aliases" >> "$HOME/.zshrc"
         echo "source $TARGET_CONFIG_DIR/zsh/user_aliases.zsh" >> "$HOME/.zshrc"
     fi
@@ -1296,11 +1300,17 @@ if [ -f "$HYPR_CONF" ]; then
     fi
 
     # 1. Inject Environment Variables for Quickshell
+    # Clean up previous injections first so they don't stack up on multiple runs
+    sed -i '/env = WALLPAPER_DIR,/d' "$HYPR_CONF"
+    sed -i '/env = SCRIPT_DIR,/d' "$HYPR_CONF"
     sed -i "/^env = NIXOS_OZONE_WL,1/a env = WALLPAPER_DIR,$WALLPAPER_DIR\nenv = SCRIPT_DIR,$HOME/.config/hypr/scripts" "$HYPR_CONF"
     
     # 2. Inject Advanced Nvidia specific configurations (ONLY IF PROPRIETARY IS CHOSEN)
     if [ "$HAS_NVIDIA_PROPRIETARY" = true ]; then
-        sed -i '/^env = NIXOS_OZONE_WL,1/a env = LIBVA_DRIVER_NAME,nvidia\nenv = XDG_SESSION_TYPE,wayland\nenv = GBM_BACKEND,nvidia-drm\nenv = __GLX_VENDOR_LIBRARY_NAME,nvidia\nenv = WLR_NO_HARDWARE_CURSORS,1\ncursor {\n    no_hardware_cursors = true\n}' "$HYPR_CONF"
+        # Check to avoid duplicating the entire block
+        if ! grep -q "LIBVA_DRIVER_NAME,nvidia" "$HYPR_CONF"; then
+            sed -i '/^env = NIXOS_OZONE_WL,1/a env = LIBVA_DRIVER_NAME,nvidia\nenv = XDG_SESSION_TYPE,wayland\nenv = GBM_BACKEND,nvidia-drm\nenv = __GLX_VENDOR_LIBRARY_NAME,nvidia\nenv = WLR_NO_HARDWARE_CURSORS,1\ncursor {\n    no_hardware_cursors = true\n}' "$HYPR_CONF"
+        fi
     fi
 else
     echo -e "${C_RED}Warning: hyprland.conf not found at $HYPR_CONF${RESET}"
@@ -1315,6 +1325,9 @@ if [ -f "$WP_QML" ]; then
     sed -i "s|let clean = String(name);|let clean = String(name).replace(/['\"]/g, \"\"); clean = clean.substring(clean.lastIndexOf('/') + 1);|g" "$WP_QML"
 
     # 3. Inject --source-color-index 0 to Matugen commands for 4.0 compatibility
+    # First, aggressively remove ANY existing instances of "--source-color-index 0" to clean up past duplicate bugs
+    sed -i 's/ \+--source-color-index 0//g' "$WP_QML"
+    # Now inject it exactly once next to any matched matugen command
     sed -i 's/matugen image "[^"]*"/& --source-color-index 0/g' "$WP_QML"
 fi
 
@@ -1324,9 +1337,15 @@ fi
 
 # 6. Zsh Dynamism
 if [ -f "$ZSH_RC" ]; then
+    # Clean up old duplicate appended lines
+    sed -i '/# Dynamic System Paths/d' "$ZSH_RC"
+    sed -i '/export WALLPAPER_DIR=/d' "$ZSH_RC"
+    sed -i '/export SCRIPT_DIR=/d' "$ZSH_RC"
+
     echo -e "\n# Dynamic System Paths" >> "$ZSH_RC"
     echo "export WALLPAPER_DIR=\"$WALLPAPER_DIR\"" >> "$ZSH_RC"
     echo "export SCRIPT_DIR=\"$HOME/.config/hypr/scripts\"" >> "$ZSH_RC"
+    
     sed -i "s/OS_LOGO_PLACEHOLDER/${OS}_small/g" "$ZSH_RC"
 fi
 
