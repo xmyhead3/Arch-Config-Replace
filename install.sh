@@ -1329,7 +1329,6 @@ if [ -f "$HYPR_CONF" ]; then
         sed -i '/env = XDG_SESSION_TYPE,wayland/d' "$HYPR_CONF"
         sed -i '/env = GBM_BACKEND,nvidia-drm/d' "$HYPR_CONF"
         sed -i '/env = __GLX_VENDOR_LIBRARY_NAME,nvidia/d' "$HYPR_CONF"
-        sed -i '/env = WLR_NO_HARDWARE_CURSORS,1/d' "$HYPR_CONF"
         sed -i '/env = QSG_RHI_BACKEND,vulkan/d' "$HYPR_CONF"
         sed -i '/env = QSG_RENDER_LOOP,basic/d' "$HYPR_CONF"
         sed -i '/env = __GL_SHADER_DISK_CACHE_SKIP_CLEANUP,1/d' "$HYPR_CONF"
@@ -1337,7 +1336,7 @@ if [ -f "$HYPR_CONF" ]; then
         sed -i '/^cursor {/,/^}/d' "$HYPR_CONF"
         
         # Now inject the full block natively
-        sed -i "/env = NIXOS_OZONE_WL,1/a env = LIBVA_DRIVER_NAME,nvidia\nenv = XDG_SESSION_TYPE,wayland\nenv = GBM_BACKEND,nvidia-drm\nenv = __GLX_VENDOR_LIBRARY_NAME,nvidia\nenv = WLR_NO_HARDWARE_CURSORS,1\nenv = QSG_RHI_BACKEND,vulkan\nenv = QSG_RENDER_LOOP,basic\nenv = __GL_SHADER_DISK_CACHE_SKIP_CLEANUP,1\nenv = __GL_SHADER_DISK_CACHE_SIZE,1073741824\ncursor {\n    no_hardware_cursors = true\n}" "$HYPR_CONF"
+        sed -i "/env = NIXOS_OZONE_WL,1/a env = LIBVA_DRIVER_NAME,nvidia\nenv = XDG_SESSION_TYPE,wayland\nenv = GBM_BACKEND,nvidia-drm\nenv = __GLX_VENDOR_LIBRARY_NAME,nvidia\nenv = QSG_RHI_BACKEND,vulkan\nenv = QSG_RENDER_LOOP,basic\nenv = __GL_SHADER_DISK_CACHE_SKIP_CLEANUP,1\nenv = __GL_SHADER_DISK_CACHE_SIZE,1073741824" "$HYPR_CONF"
     fi
 else
     echo -e "${C_RED}Warning: hyprland.conf not found at $HYPR_CONF${RESET}"
