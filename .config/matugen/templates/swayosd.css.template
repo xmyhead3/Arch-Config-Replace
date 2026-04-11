@@ -1,6 +1,11 @@
-/* SwayOSD Matugen Theme 
-*/
+/* SwayOSD Matugen Theme */
 
+/* FIX: Ensure the base GTK window is completely transparent so the default theme background doesn't bleed through */
+window {
+    background: transparent;
+}
+
+window#osd, 
 window#osd-container {
     background-color: {{colors.surface.default.hex}}; 
     border: 2px solid {{colors.primary.default.hex}}; 

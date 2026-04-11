@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.0.23-6"
+DOTS_VERSION="1.0.24"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 # Global Variables & Initial States (Defaults)
@@ -1008,7 +1008,9 @@ if [ -f "$(pwd)/install.sh" ] && [ -d "$(pwd)/.config" ]; then
     OLD_COMMIT="$LAST_COMMIT"
 else
     if [ -d "$CLONE_DIR" ]; then
-        OLD_COMMIT="${LAST_COMMIT:-$(git -C "$CLONE_DIR" rev-parse HEAD 2>/dev/null)}"
+        # STRICTLY use LAST_COMMIT from the version file.
+        # If it's empty, OLD_COMMIT remains empty, triggering a full overwrite.
+        OLD_COMMIT="$LAST_COMMIT"
         git -C "$CLONE_DIR" pull > /dev/null 2>&1
         NEW_COMMIT=$(git -C "$CLONE_DIR" rev-parse HEAD 2>/dev/null)
     else
@@ -1063,12 +1065,18 @@ if [ "$INSTALL_NVIM" = true ]; then CONFIG_FOLDERS+=("nvim"); fi
 mkdir -p "$TARGET_CONFIG_DIR" "$BACKUP_DIR"
 
 DO_FULL_INSTALL=true
-if [ -n "$OLD_COMMIT" ] && [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
+
+# Explicitly check if OLD_COMMIT is empty (meaning no previous commit in version file)
+if [ -z "$OLD_COMMIT" ]; then
+    echo -e "  -> No previous commit tracked. Forcing a full overwrite."
+    DO_FULL_INSTALL=true
+elif [ -n "$OLD_COMMIT" ] && [ "$OLD_COMMIT" != "$NEW_COMMIT" ]; then
     DO_FULL_INSTALL=false
     # Verify the OLD_COMMIT exists in git history to safely generate a diff
     if git -C "$REPO_DIR" cat-file -t "$OLD_COMMIT" >/dev/null 2>&1; then
         echo -e "  -> Found existing installation. Analyzing updates between ${C_YELLOW}${OLD_COMMIT::7}${RESET} and ${C_YELLOW}${NEW_COMMIT::7}${RESET}..."
     else
+        echo -e "  -> Previous commit missing from local tree. Forcing a full overwrite."
         DO_FULL_INSTALL=true
     fi
 elif [ "$OLD_COMMIT" == "$NEW_COMMIT" ] && [ -n "$OLD_COMMIT" ]; then
