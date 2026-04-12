@@ -58,8 +58,48 @@ PanelWindow {
     property real targetW: 1
     property real targetH: 1
 
+    // NEW: Global UI Scale mapped from settings.json
+    property real globalUiScale: 1.0
+
+    onGlobalUiScaleChanged: {
+        handleNativeScreenChange();
+    }
+
+    // --- Dynamic Settings Reader ---
+    Process {
+        id: settingsReader
+        command: ["bash", "-c", "cat ~/.config/hypr/settings.json 2>/dev/null || echo '{}'"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    if (this.text && this.text.trim().length > 0) {
+                        let parsed = JSON.parse(this.text);
+                        if (parsed.uiScale !== undefined && masterWindow.globalUiScale !== parsed.uiScale) {
+                            masterWindow.globalUiScale = parsed.uiScale;
+                        }
+                    }
+                } catch (e) {
+                    console.log("Error parsing settings.json in main.qml:", e);
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: settingsPollTimer
+        interval: 2000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            settingsReader.running = false;
+            settingsReader.running = true;
+        }
+    }
+    // -------------------------------
+
     function getLayout(name) {
-        return Registry.getLayout(name, 0, 0, Screen.width, Screen.height);
+        return Registry.getLayout(name, 0, 0, Screen.width, Screen.height, masterWindow.globalUiScale);
     }
 
     // Automatically recalculates position and scale if the OS resolution changes
