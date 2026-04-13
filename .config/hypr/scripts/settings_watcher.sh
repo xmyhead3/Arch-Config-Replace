@@ -14,9 +14,10 @@ echo "Started watching $SETTINGS_FILE for changes..."
 while inotifywait -q -e close_write "$SETTINGS_FILE"; do
     echo "Settings updated! Applying changes..."
 
-    # Extract values using jq (raw output to strip quotes)
+    # Extract values using jq 
+    # FIXED: Removed '// empty' from the boolean to prevent 'false' from evaluating to empty
     LANG=$(jq -r '.language // empty' "$SETTINGS_FILE")
-    GUIDE_STARTUP=$(jq -r '.openGuideAtStartup // empty' "$SETTINGS_FILE")
+    GUIDE_STARTUP=$(jq -r '.openGuideAtStartup' "$SETTINGS_FILE")
     WP_DIR=$(jq -r '.wallpaperDir // empty' "$SETTINGS_FILE")
 
     # 1. Update Keyboard Layout
