@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.1.8-1"
+DOTS_VERSION="1.1.9"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 # Prevent the TTY/Console from falling asleep (black screen) during long package builds
@@ -1416,8 +1416,9 @@ fi
 echo -e "  -> Syncing Settings and Keyboard languages to settings.json..."
 if [ -f "$SETTINGS_FILE" ]; then
     tmp_json=$(mktemp)
-    # Update the existing file, ensuring 'language' (not 'languages') is set, along with wallpaperDir
-    jq --arg langs "$KB_LAYOUTS" --arg wpdir "$WALLPAPER_DIR" '.language = $langs | .wallpaperDir = $wpdir' "$SETTINGS_FILE" > "$tmp_json" && mv "$tmp_json" "$SETTINGS_FILE"
+    # Update the existing file, ensuring 'language', 'wallpaperDir', and 'kbOptions' are set
+    jq --arg langs "$KB_LAYOUTS" --arg wpdir "$WALLPAPER_DIR" --arg kbopt "$KB_OPTIONS" \
+       '.language = $langs | .wallpaperDir = $wpdir | .kbOptions = $kbopt' "$SETTINGS_FILE" > "$tmp_json" && mv "$tmp_json" "$SETTINGS_FILE"
 else
     mkdir -p "$(dirname "$SETTINGS_FILE")"
     # Generate the full expected default structure for the QML guide
@@ -1427,7 +1428,8 @@ else
   "openGuideAtStartup": true,
   "topbarHelpIcon": true,
   "wallpaperDir": "$WALLPAPER_DIR",
-  "language": "$KB_LAYOUTS"
+  "language": "$KB_LAYOUTS",
+  "kbOptions": "$KB_OPTIONS"
 }
 EOF
 fi
