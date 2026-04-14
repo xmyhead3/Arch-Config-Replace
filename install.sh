@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.1.10-3"
+DOTS_VERSION="1.2.0"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 # Prevent the TTY/Console from falling asleep (black screen) during long package builds
@@ -85,7 +85,7 @@ C_MAGENTA="\e[35m"
 # Package Arrays
 # ==============================================================================
 ARCH_PKGS=(
-    "hyprland" "weston" "kitty" "cava" "rofi-wayland" "swaync" 
+    "hyprland" "weston" "kitty" "wl-screenrec" "cava" "rofi-wayland" 
     "pavucontrol" "alsa-utils" "awww" "networkmanager-dmenu-git"
     "wl-clipboard" "fd" "qt6-multimedia" "qt6-5compat" "ripgrep"
     "cliphist" "jq" "socat" "inotify-tools" "pamixer" "brightnessctl" "acpi" "iw"
@@ -1081,7 +1081,7 @@ echo -e "\n${C_CYAN}[ INFO ]${RESET} Applying Configurations & Backing Up Old On
 TARGET_CONFIG_DIR="$HOME/.config"
 BACKUP_DIR="$HOME/.config-backup-$(date +%Y%m%d_%H%M%S)"
 
-CONFIG_FOLDERS=("cava" "hypr" "kitty" "rofi" "swaync" "matugen" "zsh" "swayosd")
+CONFIG_FOLDERS=("cava" "hypr" "kitty" "rofi" "matugen" "zsh" "swayosd")
 if [ "$INSTALL_NVIM" = true ]; then CONFIG_FOLDERS+=("nvim"); fi
 
 mkdir -p "$TARGET_CONFIG_DIR" "$BACKUP_DIR"

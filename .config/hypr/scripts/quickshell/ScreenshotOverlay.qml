@@ -22,16 +22,27 @@ PanelWindow {
     Scaler { id: scaler; currentWidth: Screen.width }
     function s(val) { return scaler.s(val); }
     
-    // --- Deep Matugen Integration ---
     MatugenColors { id: _theme }
-    property color dimColor: Qt.rgba(_theme.crust.r, _theme.crust.g, _theme.crust.b, 0.75)
-    property color selectionTint: Qt.rgba(_theme.mauve.r, _theme.mauve.g, _theme.mauve.b, 0.15)
+    property color dimColor: Qt.alpha(_theme.crust, 0.75)
+    property color selectionTint: Qt.alpha(_theme.mauve, 0.15)
     property color handleColor: _theme.base
     property color accentColor: _theme.mauve
 
     property bool isEditMode: Quickshell.env("QS_SCREENSHOT_EDIT") === "true"
     
-    // --- Synchronous Cache Loading ---
+    // Remember the video mode state
+    property string cachedMode: {
+        let val = Quickshell.env("QS_CACHED_MODE");
+        return val ? val : "false";
+    }
+    property bool isVideoMode: cachedMode === "true"
+
+    // Save mode instantly when toggled
+    onIsVideoModeChanged: {
+        Quickshell.execDetached(["bash", "-c", "echo '" + (root.isVideoMode ? "true" : "false") + "' > ~/.cache/qs_screenshot_mode"]);
+    }
+    
+    // Synchronous Cache Loading
     property string cachedGeom: {
         let val = Quickshell.env("QS_CACHED_GEOM");
         return val ? val : "";
@@ -48,6 +59,13 @@ PanelWindow {
     property bool hasSelection: hasValidCache
     property bool isSelecting: false
 
+    // Maximization State Tracking
+    property bool isMaximized: false
+    property real preStartX: 0
+    property real preStartY: 0
+    property real preEndX: 0
+    property real preEndY: 0
+
     property real selX: Math.min(startX, endX)
     property real selY: Math.min(startY, endY)
     property real selW: Math.abs(endX - startX)
@@ -55,7 +73,6 @@ PanelWindow {
     
     property string geometryString: `${Math.round(selX)},${Math.round(selY)} ${Math.round(selW)}x${Math.round(selH)}`
 
-    // Interaction variables
     property int interactionMode: 0
     property real anchorX: 0
     property real anchorY: 0
@@ -71,12 +88,50 @@ PanelWindow {
         }
     }
 
+    // Smooth Maximize Animation
+    ParallelAnimation {
+        id: maximizeAnim
+        property real targetStartX
+        property real targetStartY
+        property real targetEndX
+        property real targetEndY
+
+        NumberAnimation { target: root; property: "startX"; to: maximizeAnim.targetStartX; duration: 250; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: root; property: "startY"; to: maximizeAnim.targetStartY; duration: 250; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: root; property: "endX"; to: maximizeAnim.targetEndX; duration: 250; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: root; property: "endY"; to: maximizeAnim.targetEndY; duration: 250; easing.type: Easing.InOutQuad }
+        
+        onFinished: {
+            root.saveCache()
+        }
+    }
+
+    function toggleMaximize() {
+        if (!isMaximized) {
+            preStartX = root.startX; preStartY = root.startY;
+            preEndX = root.endX; preEndY = root.endY;
+            
+            maximizeAnim.targetStartX = 0; 
+            maximizeAnim.targetStartY = 0;
+            maximizeAnim.targetEndX = root.width; 
+            maximizeAnim.targetEndY = root.height;
+            isMaximized = true;
+        } else {
+            maximizeAnim.targetStartX = preStartX; 
+            maximizeAnim.targetStartY = preStartY;
+            maximizeAnim.targetEndX = preEndX; 
+            maximizeAnim.targetEndY = preEndY;
+            isMaximized = false;
+        }
+        maximizeAnim.restart();
+    }
+
     // Keyboard Shortcuts
     Shortcut { sequence: "Escape"; onActivated: Qt.quit() }
     Shortcut { 
         sequence: "Return"
         onActivated: {
-            if (root.hasSelection) root.executeCapture(root.isEditMode)
+            if (root.hasSelection) root.executeCapture(root.isEditMode && !root.isVideoMode, root.isVideoMode)
         }
     }
 
@@ -93,7 +148,7 @@ PanelWindow {
             
             Text {
                 anchors.centerIn: parent
-                text: "Select region to capture"
+                text: root.isVideoMode ? "Select region to record" : "Select region to capture"
                 font.family: "JetBrains Mono"; font.weight: Font.DemiBold; font.pixelSize: s(24)
                 color: _theme.text
             }
@@ -115,8 +170,8 @@ PanelWindow {
     Rectangle {
         visible: root.isSelecting || root.hasSelection
         x: root.selX; y: root.selY; width: root.selW; height: root.selH
-        color: root.selectionTint
-        border.color: root.accentColor
+        color: root.isVideoMode ? Qt.alpha(_theme.red, 0.15) : root.selectionTint
+        border.color: root.isVideoMode ? _theme.red : root.accentColor
         border.width: s(4)
         z: 5
     }
@@ -125,15 +180,17 @@ PanelWindow {
     component Handle: Rectangle {
         width: s(20); height: s(20); radius: s(10)
         color: root.handleColor
-        border.color: root.accentColor; border.width: s(4)
+        border.color: root.isVideoMode ? _theme.red : root.accentColor
+        border.width: s(4)
         visible: root.hasSelection || root.isSelecting
         z: 10
     }
 
-    Handle { x: root.selX - width/2; y: root.selY - height/2 } 
-    Handle { x: root.selX + root.selW - width/2; y: root.selY - height/2 } 
-    Handle { x: root.selX - width/2; y: root.selY + root.selH - height/2 } 
-    Handle { x: root.selX + root.selW - width/2; y: root.selY + root.selH - height/2 } 
+    // Centered exactly on the selection corners
+    Handle { x: root.selX - width / 2; y: root.selY - height / 2 } 
+    Handle { x: root.selX + root.selW - width / 2; y: root.selY - height / 2 } 
+    Handle { x: root.selX - width / 2; y: root.selY + root.selH - height / 2 } 
+    Handle { x: root.selX + root.selW - width / 2; y: root.selY + root.selH - height / 2 } 
 
     // --- Master Interaction Area ---
     MouseArea {
@@ -183,43 +240,29 @@ PanelWindow {
 
             let dx = mouse.x - root.anchorX
             let dy = mouse.y - root.anchorY
-            
-            // Helper function to keep values inside the screen boundaries
             let clamp = (val, min, max) => Math.max(min, Math.min(max, val))
 
             if (root.interactionMode === 1) { 
-                // Clamp drawing to screen bounds
                 root.endX = clamp(mouse.x, 0, root.width)
                 root.endY = clamp(mouse.y, 0, root.height)
-                
             } else if (root.interactionMode === 2) { 
-                // Clamp the whole box to the screen when moving
                 let targetX = clamp(root.initX + dx, 0, root.width - root.initW)
                 let targetY = clamp(root.initY + dy, 0, root.height - root.initH)
-                
-                root.startX = targetX
-                root.startY = targetY
-                root.endX = targetX + root.initW
-                root.endY = targetY + root.initH
-                
+                root.startX = targetX; root.startY = targetY;
+                root.endX = targetX + root.initW; root.endY = targetY + root.initH;
             } else { 
                 let nx = root.initX, ny = root.initY, nw = root.initW, nh = root.initH
 
-                // Clamp individual resizing edges to screen bounds
                 if ([3, 6, 8].includes(root.interactionMode)) {
                     nx = clamp(root.initX + dx, 0, root.initX + root.initW - 10)
                     nw = root.initW + (root.initX - nx)
                 }
-                if ([5, 7, 10].includes(root.interactionMode)) { 
-                    nw = clamp(root.initW + dx, 10, root.width - root.initX) 
-                }
+                if ([5, 7, 10].includes(root.interactionMode)) { nw = clamp(root.initW + dx, 10, root.width - root.initX) }
                 if ([3, 4, 5].includes(root.interactionMode)) {
                     ny = clamp(root.initY + dy, 0, root.initY + root.initH - 10)
                     nh = root.initH + (root.initY - ny)
                 }
-                if ([8, 9, 10].includes(root.interactionMode)) { 
-                    nh = clamp(root.initH + dy, 10, root.height - root.initY) 
-                }
+                if ([8, 9, 10].includes(root.interactionMode)) { nh = clamp(root.initH + dy, 10, root.height - root.initY) }
 
                 root.startX = nx; root.startY = ny; 
                 root.endX = nx + nw; root.endY = ny + nh;
@@ -229,8 +272,14 @@ PanelWindow {
         onPressed: (mouse) => {
             if (mouse.button === Qt.RightButton) { Qt.quit(); return; }
             
+            maximizeAnim.stop() // Halt expansion explicitly if clicking mid-animation
+            
             root.interactionMode = getInteractionMode(mouse.x, mouse.y, mouse.modifiers)
             root.isSelecting = true
+            
+            // Breaking maximization state if user interacts manually
+            if (root.interactionMode !== 1) root.isMaximized = false;
+            
             root.anchorX = mouse.x; root.anchorY = mouse.y
             root.initX = root.selX; root.initY = root.selY; root.initW = root.selW; root.initH = root.selH;
 
@@ -242,6 +291,7 @@ PanelWindow {
                 root.startX = clampedX; root.startY = clampedY; 
                 root.endX = clampedX; root.endY = clampedY;
                 root.hasSelection = false
+                root.isMaximized = false
             }
         }
 
@@ -252,8 +302,8 @@ PanelWindow {
                     root.hasSelection = true
                     root.saveCache()
                     
-                    if (root.isEditMode && root.interactionMode === 1) {
-                        root.executeCapture(true)
+                    if (root.isEditMode && !root.isVideoMode && root.interactionMode === 1) {
+                        root.executeCapture(true, false)
                     }
                 } else {
                     root.hasSelection = false
@@ -262,18 +312,30 @@ PanelWindow {
         }
     }
 
-    // --- GNOME-Style Toolbar (Z: 30) ---
+    // --- GNOME-Style Mode Toolbar (Z: 30) ---
     Rectangle {
         id: toolbar
-        visible: root.hasSelection && !root.isSelecting
         z: 30 
         
+        // Smart Position Math
+        property bool fitsOutsideBottom: (root.selY + root.selH + height + s(15)) <= root.height
+        property bool fitsOutsideTop: (root.selY - height - s(15)) >= 0
+        property bool fitsInside: root.selH >= (height + s(30)) && root.selW >= (width + s(20))
+
+        // Only visible if it mathematically fits somewhere (otherwise disappears)
+        visible: root.hasSelection && !root.isSelecting && (fitsOutsideBottom || fitsOutsideTop || fitsInside)
+
+        // Center horizontally bounded by screen edges
         x: Math.max(s(10), Math.min(parent.width - width - s(10), root.selX + (root.selW / 2) - (width / 2)))
-        y: (root.selY + root.selH + height + s(25) < parent.height) ? (root.selY + root.selH + s(15)) : (root.selY - height - s(15))
+        
+        // Waterfall logic: Outside Bottom -> Outside Top -> Inside Bottom
+        y: fitsOutsideBottom ? (root.selY + root.selH + s(15)) : 
+          (fitsOutsideTop ? (root.selY - height - s(15)) : 
+          (root.selY + root.selH - height - s(15)))
 
         width: toolbarLayout.width + s(16)
-        height: s(48)
-        radius: s(24)
+        height: s(52)
+        radius: s(26)
         
         color: _theme.base
         border.color: _theme.surface1
@@ -284,6 +346,36 @@ PanelWindow {
             anchors.centerIn: parent
             spacing: s(8)
 
+            // --- Photo / Video Switcher ---
+            Rectangle {
+                width: s(80); height: s(36); radius: s(18)
+                color: _theme.surface0
+                
+                RowLayout {
+                    anchors.fill: parent; anchors.margins: s(4); spacing: 0
+                    
+                    Rectangle {
+                        Layout.fillWidth: true; Layout.fillHeight: true; radius: s(14)
+                        color: !root.isVideoMode ? _theme.surface2 : "transparent"
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        
+                        Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; text: "󰄄"; color: !root.isVideoMode ? _theme.text : _theme.subtext0; font.pixelSize: s(16) }
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.isVideoMode = false }
+                    }
+                    
+                    Rectangle {
+                        Layout.fillWidth: true; Layout.fillHeight: true; radius: s(14)
+                        color: root.isVideoMode ? _theme.surface2 : "transparent"
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        
+                        Text { anchors.centerIn: parent; font.family: "Iosevka Nerd Font"; text: ""; color: root.isVideoMode ? _theme.text : _theme.subtext0; font.pixelSize: s(16) }
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.isVideoMode = true }
+                    }
+                }
+            }
+
+            Rectangle { width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: _theme.surface0; radius: s(1) }
+
             component ToolbarBtn: Rectangle {
                 property string iconTxt: ""
                 property string label: ""
@@ -293,7 +385,7 @@ PanelWindow {
                 Layout.preferredHeight: s(36)
                 Layout.preferredWidth: label !== "" ? (txt.implicitWidth + s(36)) : s(36)
                 radius: s(18)
-                color: ma.containsMouse ? (isDanger ? Qt.rgba(_theme.red.r, _theme.red.g, _theme.red.b, 0.2) : _theme.surface0) : "transparent"
+                color: ma.containsMouse ? (isDanger ? Qt.alpha(_theme.red, 0.2) : _theme.surface0) : "transparent"
                 Behavior on color { ColorAnimation { duration: 150 } }
 
                 RowLayout {
@@ -305,17 +397,24 @@ PanelWindow {
                 MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: parent.clicked() }
             }
 
-            ToolbarBtn { iconTxt: "󰄄"; label: "Capture"; onClicked: root.executeCapture(false) }
-            ToolbarBtn { iconTxt: "󰏫"; label: "Edit"; onClicked: root.executeCapture(true) }
+            // Controls
+            ToolbarBtn { visible: !root.isVideoMode; iconTxt: "󰄄"; label: "Capture"; onClicked: root.executeCapture(false, false) }
+            ToolbarBtn { visible: !root.isVideoMode; iconTxt: "󰏫"; label: "Edit"; onClicked: root.executeCapture(true, false) }
+            ToolbarBtn { visible: root.isVideoMode; iconTxt: "󰑊"; label: "Record"; isDanger: true; onClicked: root.executeCapture(false, true) }
+
             Rectangle { width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: _theme.surface0; radius: s(1) }
+            
+            // Fullscreen / Window Toggle
+            ToolbarBtn { iconTxt: root.isMaximized ? "" : ""; onClicked: root.toggleMaximize() }
             ToolbarBtn { iconTxt: "󰅖"; isDanger: true; onClicked: Qt.quit() }
         }
     }
 
-    function executeCapture(openEditor) {
-        let cmd = "bash ~/.config/hypr/scripts/screenshot.sh --geometry \"" + root.geometryString + "\"";
-        if (openEditor) cmd += " --edit";
-        Quickshell.execDetached(["bash", "-c", cmd]);
-        Qt.quit(); 
+    function executeCapture(openEditor, isRecord) {
+        let cmd = `bash ~/.config/hypr/scripts/screenshot.sh --geometry "${root.geometryString}"`
+        if (isRecord) cmd += " --record"
+        if (openEditor) cmd += " --edit"
+        Quickshell.execDetached(["bash", "-c", cmd])
+        Qt.quit() 
     }
 }
