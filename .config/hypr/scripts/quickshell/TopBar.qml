@@ -56,6 +56,7 @@ Variants {
             // --- State Variables ---
             property bool showHelpIcon: true
             property bool isRecording: false // Track screen recording
+            property bool updateAvailable: false // Track pending updates
             
             // Background poller to check if wl-screenrec is active
             Process {
@@ -71,6 +72,22 @@ Variants {
             Timer {
                 interval: 500; running: true; repeat: true
                 onTriggered: recPoller.running = true
+            }
+
+            // Background poller to check for pending updates
+            Process {
+                id: updatePoller
+                command: ["bash", "-c", "if [ -f ~/.cache/qs_update_pending ]; then echo '1'; else echo '0'; fi"]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        barWindow.updateAvailable = (this.text.trim() === "1");
+                    }
+                }
+            }
+
+            Timer {
+                interval: 2000; running: true; repeat: true
+                onTriggered: updatePoller.running = true
             }
             
             Process {
@@ -369,7 +386,7 @@ Variants {
                     }
                 }
             }
-	    Process { id: networkWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/network_wait.sh"]; onExited: networkPoller.running = true }
+        Process { id: networkWaiter; command: ["bash", "-c", "~/.config/hypr/scripts/quickshell/watchers/network_wait.sh"]; onExited: networkPoller.running = true }
 
             // --- BLUETOOTH ---
             Process {
@@ -622,6 +639,56 @@ Variants {
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/rofi_show.sh drun"])
+                        }
+                    }
+
+                    // --- NEW: Update Button ---
+                    Rectangle {
+                        id: updateButton
+                        property bool isHovered: updateMouse.containsMouse
+                        color: isHovered ? Qt.rgba(mocha.surface1.r, mocha.surface1.g, mocha.surface1.b, 0.95) : Qt.rgba(mocha.base.r, mocha.base.g, mocha.base.b, 0.75)
+                        radius: barWindow.s(14); border.width: 1; border.color: Qt.rgba(mocha.text.r, mocha.text.g, mocha.text.b, isHovered ? 0.15 : 0.05)
+                        
+                        property real targetWidth: barWindow.updateAvailable ? barWindow.barHeight : 0
+                        Layout.preferredWidth: targetWidth
+                        Layout.preferredHeight: parent.moduleHeight
+                        
+                        visible: targetWidth > 0 || opacity > 0
+                        opacity: barWindow.updateAvailable ? 1.0 : 0.0
+                        clip: true
+                        
+                        Behavior on targetWidth { NumberAnimation { duration: 400; easing.type: Easing.OutQuint } }
+                        Behavior on opacity { NumberAnimation { duration: 300 } }
+                        
+                        scale: isHovered ? 1.05 : 1.0
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        
+                        property color pulseColor: mocha.green
+                        SequentialAnimation on pulseColor {
+                            running: barWindow.updateAvailable
+                            loops: Animation.Infinite
+                            ColorAnimation { to: mocha.teal; duration: 1500; easing.type: Easing.InOutSine }
+                            ColorAnimation { to: mocha.green; duration: 1500; easing.type: Easing.InOutSine }
+                        }
+                        
+                        Text {
+                            anchors.centerIn: parent
+                            text: "󰚰" // package/update icon
+                            font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(24)
+                            color: parent.isHovered ? mocha.text : parent.pulseColor
+                            Behavior on color { ColorAnimation { duration: 200 } }
+                        }
+
+                        MouseArea {
+                            id: updateMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                // Instantly hide the button and launch the updater
+                                barWindow.updateAvailable = false;
+                                Quickshell.execDetached(["bash", "-c", "rm -f ~/.cache/qs_update_pending && ~/.config/hypr/scripts/qs_manager.sh toggle updater"]);
+                            }
                         }
                     }
 
@@ -1245,7 +1312,7 @@ Variants {
                         }
                     }
                     
-                    // --- NEW: Screen Recording Indicator & Stop Button ---
+                    // --- Screen Recording Indicator & Stop Button ---
                     Rectangle {
                         id: recButton
                         property bool isHovered: recMouse.containsMouse

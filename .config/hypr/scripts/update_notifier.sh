@@ -5,6 +5,8 @@ INTERVAL=600
 
 # Cache file to prevent notification spam if the script is restarted
 CACHE_FILE="$HOME/.cache/qs_update_notified_version"
+# State file to tell the topbar to show the update button
+PENDING_FILE="$HOME/.cache/qs_update_pending"
 
 while true; do
     # Fetch local version
@@ -22,21 +24,24 @@ while true; do
         
         if [[ "$NEWEST" == "$REMOTE_VERSION" ]]; then
             
+            # Signal the topbar to show the update icon
+            touch "$PENDING_FILE"
+            
             # Only send the notification if we haven't notified about this specific version yet
             if [[ ! -f "$CACHE_FILE" ]] || [[ "$(cat "$CACHE_FILE")" != "$REMOTE_VERSION" ]]; then
                 
                 # Cache the version so we don't spam the user every 10 minutes
                 echo "$REMOTE_VERSION" > "$CACHE_FILE"
 
-                # Send notification and wait for the user to click the action button
-                ACTION=$(notify-send -t 60000 -a 'Imperative Dots' -u normal 'Update Available' "A new version ($REMOTE_VERSION) is ready! Click below to view changelog." --action="update=View & Update")
-                
-                if [[ "$ACTION" == "update" ]]; then
-                    bash ~/.config/hypr/scripts/qs_manager.sh toggle updater &
-                fi
+                # Send standard notification without the action prompt
+                notify-send -t 15000 -a 'Imperative Dots' -u normal 'Update Available' "A new version ($REMOTE_VERSION) is ready! Click the update icon in the topbar to install."
                 
             fi
         fi
+    else
+        # Self-healing: if versions match or we are offline, clear the pending flag 
+        # so the topbar button disappears if you updated via terminal.
+        rm -f "$PENDING_FILE"
     fi
 
     # Wait 10 minutes before checking again
