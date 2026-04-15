@@ -14,39 +14,84 @@ mkdir -p "$SAVE_DIR" "$RECORD_DIR" "$CACHE_DIR"
 # SMART TOGGLE: STOP RECORDING & MUX AUDIO/VIDEO
 # ---------------------------------------------------------
 if [ -f "$CACHE_DIR/wl_pid" ]; then
+    # PREVENT OVERLAPPING EXECUTIONS IF BUTTON IS SPAMMED
+    if [ -f "$CACHE_DIR/processing.lock" ]; then
+        exit 0
+    fi
+    touch "$CACHE_DIR/processing.lock"
+
     WL_PID=$(cat "$CACHE_DIR/wl_pid")
     FF_PID=$(cat "$CACHE_DIR/ff_pid")
     VID_TMP=$(cat "$CACHE_DIR/vid_tmp")
     AUD_TMP=$(cat "$CACHE_DIR/aud_tmp")
     FINAL_FILE=$(cat "$CACHE_DIR/final_file")
 
-    notify-send -a "Screen Recorder" "⏳ Processing..." "Finishing streams. Please wait a moment."
+    notify-send -a "Screen Recorder" "⏳ Saving..." "Processing recording in the background."
 
-    kill -SIGINT $WL_PID 2>/dev/null
+    # 1. SEND STOP SIGNAL SIMULTANEOUSLY (Fixes audio trailing)
+    [ "$WL_PID" != "0" ] && kill -SIGINT $WL_PID 2>/dev/null
     [ "$FF_PID" != "0" ] && kill -SIGINT $FF_PID 2>/dev/null
 
-    while kill -0 $WL_PID 2>/dev/null; do sleep 0.2; done
-    [ "$FF_PID" != "0" ] && while kill -0 $FF_PID 2>/dev/null; do sleep 0.2; done
+    # 2. WAIT FOR BOTH TO CLOSE GRACEFULLY
+    timeout=30
+    while { kill -0 $WL_PID 2>/dev/null || kill -0 $FF_PID 2>/dev/null; } && [ $timeout -gt 0 ]; do
+        sleep 0.1
+        timeout=$((timeout - 1))
+    done
 
-    if [ -s "$VID_TMP" ]; then
-        if [ -s "$AUD_TMP" ]; then
-            ffmpeg -nostdin -y \
-                -i "$VID_TMP" -i "$AUD_TMP" \
-                -filter_complex "[0:a][1:a]amix=inputs=2:duration=first[aout]" \
-                -map 0:v -map "[aout]" -c:v copy -c:a aac -b:a 192k \
-                "$FINAL_FILE" -loglevel error
+    # 3. FORCE KILL IF STUCK
+    [ "$WL_PID" != "0" ] && kill -9 $WL_PID 2>/dev/null
+    [ "$FF_PID" != "0" ] && kill -9 $FF_PID 2>/dev/null
+
+    # 4. BACKGROUND THE HEAVY LIFTING (Fixes 4-second UI freeze)
+    (
+        if [ -s "$VID_TMP" ]; then
+            if [ -s "$AUD_TMP" ]; then
+                HAS_AUDIO=$(ffprobe -v error -select_streams a -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "$VID_TMP" 2>/dev/null)
+
+                MIX_SUCCESS=false
+                if [ -n "$HAS_AUDIO" ]; then
+                    # Both exist -> Mix them (added -shortest to eliminate audio trail)
+                    if ffmpeg -nostdin -y -threads 0 \
+                        -i "$VID_TMP" -i "$AUD_TMP" \
+                        -filter_complex "[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=2[aout]" \
+                        -map 0:v -map "[aout]" -c:v copy -c:a aac -b:a 192k -shortest \
+                        "$FINAL_FILE" -loglevel error; then
+                        MIX_SUCCESS=true
+                    fi
+                else
+                    # Only mic exists -> Map directly (added -shortest to eliminate audio trail)
+                    if ffmpeg -nostdin -y -threads 0 \
+                        -i "$VID_TMP" -i "$AUD_TMP" \
+                        -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k -shortest \
+                        "$FINAL_FILE" -loglevel error; then
+                        MIX_SUCCESS=true
+                    fi
+                fi
+
+                if [ "$MIX_SUCCESS" = true ]; then
+                    rm -f "$VID_TMP" "$AUD_TMP"
+                else
+                    mv "$VID_TMP" "$FINAL_FILE"
+                    notify-send -a "Screen Recorder" "⚠️ Audio Mix Failed" "Saved video with default audio only."
+                fi
+            else
+                mv "$VID_TMP" "$FINAL_FILE"
+            fi
+
+            if [ -f "$FINAL_FILE" ]; then
+                notify-send -a "Screen Recorder" -i "$FINAL_FILE" "⏺ Recording Saved" "File: $(basename "$FINAL_FILE")\nFolder: $RECORD_DIR"
+            fi
         else
-            mv "$VID_TMP" "$FINAL_FILE"
+            notify-send -a "Screen Recorder" "❌ Error" "Failed to save the video file."
         fi
 
-        if [ -f "$FINAL_FILE" ]; then
-            notify-send -a "Screen Recorder" -i "$FINAL_FILE" "⏺ Recording Saved" "File: $(basename "$FINAL_FILE")\nFolder: $RECORD_DIR"
-        fi
-    else
-        notify-send -a "Screen Recorder" "❌ Error" "Failed to save the video file."
-    fi
+        # Final cleanup of temp assets inside the subshell
+        rm -f "$AUD_TMP" "$VID_TMP"
+    ) & disown
 
-    rm -f "$VID_TMP" "$AUD_TMP"
+    # 5. INSTANT UI CLEANUP (Lets the topbar button update immediately)
+    rm -f "$CACHE_DIR/processing.lock"
     rm -f "$CACHE_DIR"/wl_pid "$CACHE_DIR"/ff_pid "$CACHE_DIR"/vid_tmp "$CACHE_DIR"/aud_tmp "$CACHE_DIR"/final_file
     exit 0
 fi
@@ -84,6 +129,9 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+# Ensure there are no stale lock files when starting a new recording
+rm -f "$CACHE_DIR/processing.lock"
+
 # ---------------------------------------------------------
 # PHASE 1: Execution
 # ---------------------------------------------------------
@@ -91,7 +139,7 @@ if [ "$FULL_MODE" = true ] || [ -n "$GEOMETRY" ]; then
 
     if [ "$RECORD_MODE" = true ]; then
         VID_TMP="$RECORD_DIR/.temp_vid_${time}.mp4"
-        AUD_TMP="$RECORD_DIR/.temp_aud_${time}.m4a"
+        AUD_TMP="$RECORD_DIR/.temp_aud_${time}.wav"
         FFMPEG_LOG="$CACHE_DIR/ffmpeg_debug.log"
 
         D_VOL="${DESK_VOL//,/.}"
@@ -129,8 +177,8 @@ if [ "$FULL_MODE" = true ] || [ -n "$GEOMETRY" ]; then
         if [ "$MIC_MUTE" != "true" ] && [ -n "$MIC_DEV" ]; then
             ffmpeg -nostdin -y \
                 -thread_queue_size 1024 -f pulse -i "$MIC_DEV" \
-                -filter_complex "[0:a]volume=${M_VOL},aresample=async=1[aout]" \
-                -map "[aout]" -c:a aac -b:a 192k "$AUD_TMP" > "$FFMPEG_LOG" 2>&1 &
+                -filter_complex "[0:a]volume=${M_VOL}[aout]" \
+                -map "[aout]" -c:a pcm_s16le "$AUD_TMP" > "$FFMPEG_LOG" 2>&1 &
             FF_PID=$!
         fi
 
@@ -157,7 +205,6 @@ if [ "$FULL_MODE" = true ] || [ -n "$GEOMETRY" ]; then
     fi
 
     if [ -s "$FILENAME" ]; then
-        # Text restored to show paths. QML still intercepts using the -i path.
         notify-send -a "Screenshot" -i "$FILENAME" "Screenshot Saved" "File: Screenshot_$time.png\nFolder: $SAVE_DIR"
     fi
     exit 0
@@ -166,6 +213,14 @@ fi
 # ---------------------------------------------------------
 # PHASE 2: UI Trigger (Launch Standalone Quickshell Overlay)
 # ---------------------------------------------------------
+
+QML_PATH="$HOME/.config/hypr/scripts/quickshell/ScreenshotOverlay.qml"
+
+# Toggle logic: if it's already running, kill it and exit
+if pgrep -f "quickshell -p $QML_PATH" > /dev/null; then
+    pkill -f "quickshell -p $QML_PATH"
+    exit 0
+fi
 
 if command -v pactl &> /dev/null; then
     export QS_MIC_LIST=$(pactl list sources short 2>/dev/null \
@@ -196,4 +251,4 @@ if [ "$EDIT_MODE" = true ]; then export QS_SCREENSHOT_EDIT="true"; else export Q
 if [ -f "$CACHE_FILE" ]; then export QS_CACHED_GEOM=$(cat "$CACHE_FILE"); else export QS_CACHED_GEOM=""; fi
 if [ -f "$MODE_CACHE_FILE" ]; then export QS_CACHED_MODE=$(cat "$MODE_CACHE_FILE"); else export QS_CACHED_MODE="false"; fi
 
-quickshell -p ~/.config/hypr/scripts/quickshell/ScreenshotOverlay.qml
+quickshell -p "$QML_PATH"
