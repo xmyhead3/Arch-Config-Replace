@@ -102,13 +102,9 @@ PanelWindow {
 
     // --- QR Scanner State ---
     property bool isScanningQr: false
-    property string qrResultText: ""
     property bool showQrPopup: false
-    property real qrTargetX: 0
-    property real qrTargetY: 0
-    property real qrTargetW: 0
-    property real qrTargetH: 0
-    property bool isQrSuccess: !qrResultText.startsWith("No QR") && !qrResultText.startsWith("ERROR") && !qrResultText.startsWith("Scan timed")
+    property bool isQrSuccess: false
+    ListModel { id: qrModel }
 
     function saveCache() {
         if (root.hasSelection) {
@@ -206,34 +202,29 @@ PanelWindow {
         z: 5
     }
 
-    // --- The Physical QR Code Highlighter Box ---
-    Rectangle {
-        visible: opacity > 0
-        opacity: (root.showQrPopup && root.isQrSuccess && root.qrTargetW > 0) ? 1.0 : 0.0
+    // --- The Physical QR Code Highlighter Boxes (Unlimited) ---
+    Repeater {
+        model: qrModel
+        delegate: Rectangle {
+            visible: opacity > 0
+            opacity: (root.showQrPopup && model.qSuccess && model.qW > 0) ? 1.0 : 0.0
 
-        // Internal static base coordinates so it snaps instantly without flying across the screen
-        property real baseTargetX: root.qrTargetX
-        property real baseTargetY: root.qrTargetY
-        property real baseTargetW: root.qrTargetW
-        property real baseTargetH: root.qrTargetH
+            property real pad: (root.showQrPopup && model.qSuccess) ? s(5) : 0
 
-        // The padding that smoothly animates outwards from the QR core
-        property real pad: (root.showQrPopup && root.isQrSuccess) ? s(5) : 0
+            x: model.qW > 0 ? (model.qX - pad) : model.qX
+            y: model.qH > 0 ? (model.qY - pad) : model.qY
+            width: model.qW > 0 ? (model.qW + (pad * 2)) : 0
+            height: model.qH > 0 ? (model.qH + (pad * 2)) : 0
+            
+            color: Qt.alpha(_theme.green, 0.25)
+            border.color: _theme.green
+            border.width: s(3)
+            radius: s(8)
+            z: 34
 
-        x: baseTargetW > 0 ? (baseTargetX - pad) : baseTargetX
-        y: baseTargetH > 0 ? (baseTargetY - pad) : baseTargetY
-        width: baseTargetW > 0 ? (baseTargetW + (pad * 2)) : 0
-        height: baseTargetH > 0 ? (baseTargetH + (pad * 2)) : 0
-        
-        color: Qt.alpha(_theme.green, 0.25)
-        border.color: _theme.green
-        border.width: s(3)
-        radius: s(8)
-        z: 34
-
-        // Only animate opacity and the padding to guarantee it draws purely from the inside
-        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
-        Behavior on pad { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+            Behavior on pad { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+        }
     }
 
     component Handle: Rectangle {
@@ -512,7 +503,6 @@ PanelWindow {
             ToolbarBtn { visible: !root.isVideoMode; iconTxt: "󰏫"; onClicked: root.executeCapture(true, false) }
             ToolbarBtn { visible: !root.isVideoMode; iconTxt: "⿻"; onClicked: root.performQrScan() }
 
-
             Rectangle { width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: _theme.surface0; radius: s(1) }
             
             ToolbarBtn { iconTxt: root.isMaximized ? "" : ""; onClicked: root.toggleMaximize() }
@@ -520,81 +510,92 @@ PanelWindow {
         }
     }
 
-    // --- Dynamic QR Data Popup (Sleek Toolbar Formatted) ---
-    Rectangle {
-        id: qrPopup
-        visible: opacity > 0
-        opacity: (root.showQrPopup && !root.isSelecting) ? 1.0 : 0.0
-        
-        property bool fitsTop: (root.qrTargetY - height - s(15)) >= root.selY
-        
-        // Target positioning locked precisely to the physical bounding box
-        property real targetX: Math.max(s(10), Math.min(root.width - width - s(10), root.qrTargetX + (root.qrTargetW / 2) - (width / 2)))
-        property real targetY: fitsTop ? (root.qrTargetY - height - s(15)) : (root.qrTargetY + root.qrTargetH + s(15))
-        
-        // Employs a slide-out effect bound cleanly to the opacity fade to prevent "flying"
-        x: targetX
-        y: targetY + (fitsTop ? (1.0 - opacity) * s(15) : -(1.0 - opacity) * s(15))
-        
-        width: qrPopupLayout.implicitWidth + s(32)
-        height: s(52)
-        radius: s(26)
-        color: _theme.base
-        border.color: root.isQrSuccess ? _theme.green : _theme.red
-        border.width: s(2)
-        z: 35
+    // --- Dynamic QR Data Popups (Unlimited Iterations, Smart Scaling) ---
+    Repeater {
+        model: qrModel
+        delegate: Rectangle {
+            id: qrPopupItem
+            visible: opacity > 0
+            opacity: (root.showQrPopup && !root.isSelecting) ? 1.0 : 0.0
+            
+            // X and Y precisely calculated to respect bounds in JS
+            x: model.qTargetX
+            y: model.qTargetY + (model.fitsTop ? (1.0 - opacity) * s(15) : -(1.0 - opacity) * s(15))
+            
+            width: qrPopupLayout.implicitWidth + s(32)
+            height: s(52)
+            radius: s(26)
+            color: _theme.base
+            border.color: model.qSuccess ? _theme.green : _theme.red
+            border.width: s(2)
 
-        // X/Y native behaviors removed. Bound specifically to opacity interpolation
-        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+            property bool isHovered: maHover.containsMouse
 
-        RowLayout {
-            id: qrPopupLayout
-            anchors.centerIn: parent
-            spacing: s(8)
+            // Normal size is 1.0. Reduces only dynamically mapped collision factor. 
+            // Centers elegantly, mitigating edge push boundaries.
+            scale: isHovered ? 1.0 : model.qBaseScale
+            z: isHovered ? 100 : (40 - index)
+            transformOrigin: Item.Center
 
-            Text {
-                text: root.qrResultText
-                color: root.isQrSuccess ? _theme.text : _theme.red
-                font.family: "JetBrains Mono"
-                font.pixelSize: s(13)
-                font.weight: Font.DemiBold
-                Layout.maximumWidth: s(400)
-                Layout.leftMargin: s(8)
-                elide: Text.ElideRight
-                wrapMode: Text.NoWrap
+            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutQuart } }
+            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+
+            MouseArea {
+                id: maHover
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton 
             }
 
-            Rectangle { 
-                visible: root.isQrSuccess
-                width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: _theme.surface0; radius: s(1) 
-            }
+            RowLayout {
+                id: qrPopupLayout
+                anchors.centerIn: parent
+                spacing: s(8)
 
-            ToolbarBtn {
-                visible: root.isQrSuccess
-                iconTxt: "󰆏"
-                onClicked: {
-                    Quickshell.execDetached(["bash", "-c", `echo -n '${root.qrResultText.replace(/'/g, "'\\''")}' | wl-copy`]);
-                    root.showQrPopup = false;
+                Text {
+                    text: model.qText
+                    color: model.qSuccess ? _theme.text : _theme.red
+                    font.family: "JetBrains Mono"
+                    font.pixelSize: s(13)
+                    font.weight: Font.DemiBold
+                    Layout.maximumWidth: s(400)
+                    Layout.leftMargin: s(8)
+                    elide: Text.ElideRight
+                    wrapMode: Text.NoWrap
                 }
-            }
 
-            ToolbarBtn {
-                visible: root.isQrSuccess && (root.qrResultText.startsWith("http://") || root.qrResultText.startsWith("https://"))
-                iconTxt: "󰌹"
-                onClicked: {
-                    Quickshell.execDetached(["xdg-open", root.qrResultText]);
-                    Qt.quit();
+                Rectangle { 
+                    visible: model.qSuccess
+                    width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: _theme.surface0; radius: s(1) 
                 }
-            }
 
-            Rectangle { 
-                width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: _theme.surface0; radius: s(1) 
-            }
+                ToolbarBtn {
+                    visible: model.qSuccess
+                    iconTxt: "󰆏"
+                    onClicked: {
+                        Quickshell.execDetached(["bash", "-c", `echo -n '${model.qText.replace(/'/g, "'\\''")}' | wl-copy`]);
+                        root.showQrPopup = false;
+                    }
+                }
 
-            ToolbarBtn { 
-                iconTxt: "󰅖"
-                isDanger: true 
-                onClicked: root.showQrPopup = false 
+                ToolbarBtn {
+                    visible: model.qSuccess && (model.qText.startsWith("http://") || model.qText.startsWith("https://"))
+                    iconTxt: "󰌹"
+                    onClicked: {
+                        Quickshell.execDetached(["xdg-open", model.qText]);
+                        Qt.quit();
+                    }
+                }
+
+                Rectangle { 
+                    width: s(2); Layout.fillHeight: true; Layout.topMargin: s(10); Layout.bottomMargin: s(10); color: _theme.surface0; radius: s(1) 
+                }
+
+                ToolbarBtn { 
+                    iconTxt: "󰅖"
+                    isDanger: true 
+                    onClicked: root.showQrPopup = false 
+                }
             }
         }
     }
@@ -612,43 +613,121 @@ PanelWindow {
         onExited: (exitCode) => {
             let res = qrReaderProcess.accumulated.trim()
             qrReaderProcess.accumulated = ""
-    
             root.isScanningQr = false
+            qrModel.clear()
     
             if (exitCode !== 0 || res === "") {
-                root.qrTargetX = root.selX + (root.selW / 2)
-                root.qrTargetY = root.selY + (root.selH / 2)
-                root.qrTargetW = 0
-                root.qrTargetH = 0
-                root.qrResultText = "Scan timed out or failed."
+                qrModel.append({ 
+                    qX: root.selX + (root.selW / 2), qY: root.selY + (root.selH / 2), qW: 0, qH: 0, 
+                    qText: "Scan timed out or failed.", qSuccess: false,
+                    qTargetX: root.selX + (root.selW / 2) - s(100), qTargetY: root.selY + (root.selH / 2),
+                    qBaseScale: 1.0, fitsTop: false 
+                })
+                root.isQrSuccess = false
                 root.showQrPopup = true
                 return
             }
-    
-            let splitIdx = res.indexOf('\n')
-            let coordStr = splitIdx !== -1 ? res.substring(0, splitIdx) : res
-            let actualText = splitIdx !== -1 ? res.substring(splitIdx + 1).trim() : ""
-    
-            let coords = coordStr.split(',')
-            if (coords.length === 4 && !isNaN(parseInt(coords[0]))) {
-                root.qrTargetX = root.selX + parseInt(coords[0])
-                root.qrTargetY = root.selY + parseInt(coords[1])
-                root.qrTargetW = parseInt(coords[2])
-                root.qrTargetH = parseInt(coords[3])
-            } else {
-                root.qrTargetX = root.selX + (root.selW / 2)
-                root.qrTargetY = root.selY + (root.selH / 2)
-                root.qrTargetW = 0
-                root.qrTargetH = 0
-                actualText = res
+
+            let lines = res.split('\n');
+            let anySuccess = false;
+            let qrs = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (line === "") continue;
+                let delimiterIdx = line.indexOf('|||');
+                if (delimiterIdx === -1) continue;
+
+                let coordStr = line.substring(0, delimiterIdx);
+                let actualText = line.substring(delimiterIdx + 3).replace(/\\n/g, '\n').replace(/\\\\/g, '\\');
+                let coords = coordStr.split(',');
+
+                if (coords.length === 4 && !isNaN(parseInt(coords[0]))) {
+                    let x = parseInt(coords[0]);
+                    let y = parseInt(coords[1]);
+                    let w = parseInt(coords[2]);
+                    let h = parseInt(coords[3]);
+                    
+                    let successState = !(actualText === "NOT_FOUND" || actualText.startsWith("ERROR:"));
+                    if (successState) anySuccess = true;
+                    
+                    let cleanText = successState ? actualText.replace(/^QR-Code:/, "") : (actualText === "NOT_FOUND" ? "No QR code found." : actualText);
+                    
+                    // Estimate maximum popup width based on chars & buttons for collision math
+                    let estTextWidth = Math.min(s(400), cleanText.length * s(8.5));
+                    let pw = estTextWidth + (successState ? s(140) : s(40)); 
+                    let ph = s(52);
+                    
+                    let absX = root.selX + x;
+                    let absY = root.selY + y;
+                    
+                    let cx = absX + (w / 2);
+                    let fitsTop = (absY - ph - s(15)) >= root.selY;
+                    
+                    // Clamp to edges gracefully. Math handles exact borders
+                    let idealX = cx - (pw / 2);
+                    let targetX = Math.max(s(10), Math.min(root.width - pw - s(10), idealX));
+                    let targetY = fitsTop ? (absY - ph - s(15)) : (absY + h + s(15));
+
+                    qrs.push({
+                        qX: absX, qY: absY, qW: w, qH: h,
+                        qText: cleanText, qSuccess: successState,
+                        pw: pw, ph: ph,
+                        targetX: targetX, targetY: targetY,
+                        cx: targetX + (pw / 2), cy: targetY + (ph / 2),
+                        scale: 1.0, fitsTop: fitsTop
+                    });
+                }
             }
-    
-            if (actualText === "NOT_FOUND" || actualText.startsWith("ERROR:")) {
-                root.qrResultText = actualText === "NOT_FOUND" ? "No QR code found in selection." : actualText
-            } else {
-                root.qrResultText = actualText.replace(/^QR-Code:/, "")
+
+            // --- Smart Scaling Collision Solver (Maintains 10px Gap) ---
+            for (let pass = 0; pass < 5; pass++) { // 5 passes loop to resolve chaining overlap groups
+                for (let i = 0; i < qrs.length; i++) {
+                    for (let j = i + 1; j < qrs.length; j++) {
+                        let A = qrs[i];
+                        let B = qrs[j];
+                        
+                        let dx = Math.abs(A.cx - B.cx);
+                        let dy = Math.abs(A.cy - B.cy);
+                        
+                        // Buffer requirements: 10px minimum gap
+                        let req_x = (A.pw * A.scale + B.pw * B.scale) / 2 + s(10);
+                        let req_y = (A.ph * A.scale + B.ph * B.scale) / 2 + s(10);
+                        
+                        if (dx < req_x && dy < req_y) {
+                            // Find precise fraction to resolve collision
+                            let factorX = dx > 0 ? (dx - s(10)) * 2 / (A.pw + B.pw) : 0;
+                            let factorY = dy > 0 ? (dy - s(10)) * 2 / (A.ph + B.ph) : 0;
+                            
+                            let maxFactor = Math.max(factorX, factorY);
+                            maxFactor = Math.max(0.35, maxFactor); // Never vanish to 0 
+                            
+                            A.scale = Math.min(A.scale, maxFactor);
+                            B.scale = Math.min(B.scale, maxFactor);
+                        }
+                    }
+                }
             }
-    
+
+            if (qrs.length === 0) {
+                qrModel.append({ 
+                    qX: root.selX + (root.selW / 2), qY: root.selY + (root.selH / 2), qW: 0, qH: 0, 
+                    qText: "No QR code found.", qSuccess: false,
+                    qTargetX: root.selX + (root.selW / 2) - s(100), qTargetY: root.selY + (root.selH / 2),
+                    qBaseScale: 1.0, fitsTop: false 
+                });
+            } else {
+                for (let i = 0; i < qrs.length; i++) {
+                    qrModel.append({
+                        qX: qrs[i].qX, qY: qrs[i].qY, qW: qrs[i].qW, qH: qrs[i].qH,
+                        qText: qrs[i].qText, qSuccess: qrs[i].qSuccess,
+                        qTargetX: qrs[i].targetX, qTargetY: qrs[i].targetY,
+                        qBaseScale: qrs[i].scale, fitsTop: qrs[i].fitsTop
+                    });
+                }
+            }
+
+            root.isQrSuccess = anySuccess;
             root.showQrPopup = true
             Quickshell.execDetached(["bash", "-c", "rm -f /tmp/qs_qr_result"])
         }
@@ -667,7 +746,7 @@ PanelWindow {
         Quickshell.execDetached(["bash", "-c", "rm -f /tmp/qs_qr_result"])
         root.isScanningQr = true
         root.showQrPopup = false
-        root.qrResultText = ""
+        qrModel.clear()
 
         let cmd = `bash ~/.config/hypr/scripts/screenshot.sh --geometry "${root.geometryString}" --scan-qr`
         Quickshell.execDetached(["bash", "-c", cmd])

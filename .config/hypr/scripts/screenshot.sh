@@ -39,52 +39,111 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 # ---------------------------------------------------------
-# INSTANT QR SCANNING EXECUTION
+# INSTANT QR SCANNING EXECUTION (WITH EXTENSIVE LOGGING)
 # ---------------------------------------------------------
 if [ "$SCAN_QR_MODE" = true ]; then
     RES_FILE="/tmp/qs_qr_result"
-    rm -f "$RES_FILE"
+    export DEBUG_LOG="/tmp/qs_qr_debug.log"
+    rm -f "$RES_FILE" "$DEBUG_LOG"
+    
+    echo "=== QR SCAN INITIATED $(date) ===" > "$DEBUG_LOG"
     
     if ! command -v zbarimg &> /dev/null; then
-        echo -e "0,0,0,0\nERROR: zbarimg is not installed. Please install it." > "$RES_FILE"
+        echo -e "0,0,0,0|||ERROR: zbarimg is not installed. Please install it." > "$RES_FILE"
+        echo "ERROR: zbarimg not installed." >> "$DEBUG_LOG"
         exit 1
     fi
 
-    # Take screenshot directly to extremely fast RAM memory (/dev/shm)
     TMP_IMG="/dev/shm/qs_qr_temp_$$.png"
+    echo "Taking screenshot with grim..." >> "$DEBUG_LOG"
     grim -g "$GEOMETRY" "$TMP_IMG"
     
-    QR_TEXT=$(zbarimg --raw -q "$TMP_IMG" 2>/dev/null)
+    echo "Running zbarimg..." >> "$DEBUG_LOG"
+    # Capture stderr to log, stdout to exported variable for Python
+    export XML_OUT=$(zbarimg --xml -q "$TMP_IMG" 2>>"$DEBUG_LOG")
     
-    if [ -n "$QR_TEXT" ]; then
-        # Fetch the physical coordinates of the QR code
-        XML_OUT=$(zbarimg --xml -q "$TMP_IMG" 2>/dev/null)
+    echo "zbarimg finished. Output length: ${#XML_OUT}" >> "$DEBUG_LOG"
+    
+    if [ -n "$XML_OUT" ]; then
+        echo "Executing Python parser..." >> "$DEBUG_LOG"
         
-        # Extract the polygon points and calculate X, Y, Width, and Height
-        PTS=$(echo "$XML_OUT" | grep -m 1 "points=" | sed -E "s/.*points=['\"]([^'\"]+)['\"].*/\1/")
-        
-        if [ -n "$PTS" ]; then
-            # Strip plus signs, replace spaces with newlines, and use awk to find the min/max bounding box
-            READ_COORDS=$(echo "$PTS" | tr -d '+' | tr ' ' '\n' | grep -v '^$' | awk -F',' '{
-                x=$1; y=$2;
-                if (min_x=="" || x<min_x) min_x=x;
-                if (max_x=="" || x>max_x) max_x=x;
-                if (min_y=="" || y<min_y) min_y=y;
-                if (max_y=="" || y>max_y) max_y=y;
-            } END {
-                print min_x "," min_y "," (max_x-min_x) "," (max_y-min_y)
-            }')
-        else
-            READ_COORDS="0,0,0,0"
-        fi
-        
-        # Write clean output directly
-        echo -e "${READ_COORDS}\n${QR_TEXT}" > "$RES_FILE"
+        # Using a quoted Here-Doc ('EOF') prevents Bash from attempting to evaluate ANY syntax inside.
+        python3 << 'EOF' > "$RES_FILE"
+import os, sys, logging, re
+import xml.etree.ElementTree as ET
+
+debug_log = os.environ.get("DEBUG_LOG", "/tmp/qs_qr_debug.log")
+logging.basicConfig(filename=debug_log, level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.info("--- Starting Python XML Parser ---")
+
+raw_xml = os.environ.get("XML_OUT", "")
+logging.debug(f"Raw XML Received:\n{raw_xml}")
+
+if not raw_xml.strip():
+    logging.error("Received empty XML string")
+    print("0,0,0,0|||ERROR: Empty output from zbarimg. See log.")
+    sys.exit(0)
+
+try:
+    # Aggressively strip xmlns attributes
+    xml_clean = re.sub(r'\sxmlns="[^"]+"', '', raw_xml)
+    xml_clean = re.sub(r"\sxmlns='[^']+'", '', xml_clean)
+    
+    tree = ET.fromstring(xml_clean)
+    
+    found_any = False
+    for elem in tree.iter():
+        if elem.tag.endswith('symbol'):
+            found_any = True
+            data_text = ''
+            min_x, min_y, max_x, max_y = float('inf'), float('inf'), -float('inf'), -float('inf')
+            
+            for child in elem:
+                if child.tag.endswith('data'):
+                    data_text = child.text if child.text else ''
+                # Handle <polygon points="+x,+y +x2,+y2 ..."/> format properly
+                elif child.tag.endswith('polygon'):
+                    pts_str = child.get('points', '')
+                    if pts_str:
+                        # Strip the '+' signs and split by space
+                        pt_pairs = pts_str.replace('+', '').split(' ')
+                        for pair in pt_pairs:
+                            if ',' in pair:
+                                try:
+                                    x_str, y_str = pair.split(',')
+                                    x, y = int(x_str), int(y_str)
+                                    min_x = min(min_x, x)
+                                    max_x = max(max_x, x)
+                                    min_y = min(min_y, y)
+                                    max_y = max(max_y, y)
+                                except ValueError:
+                                    pass
+            
+            if min_x == float('inf'):
+                min_x, min_y, max_x, max_y = 0, 0, 0, 0
+
+            w = max_x - min_x
+            h = max_y - min_y
+
+            encoded = data_text.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '')
+            logging.info(f"QR Extracted: {int(min_x)},{int(min_y)},{int(w)},{int(h)} -> {encoded[:50]}...")
+            print(f"{int(min_x)},{int(min_y)},{int(w)},{int(h)}|||{encoded}")
+
+    if not found_any:
+        logging.warning("No <symbol> tags found in the XML.")
+        print("0,0,0,0|||NOT_FOUND")
+
+except Exception as e:
+    logging.exception("Failed to parse XML")
+    print(f"0,0,0,0|||ERROR: XML Parse failure: {e}. Check log.")
+EOF
     else
-        echo -e "0,0,0,0\nNOT_FOUND" > "$RES_FILE"
+        echo "zbarimg output was totally empty." >> "$DEBUG_LOG"
+        echo -e "0,0,0,0|||NOT_FOUND" > "$RES_FILE"
     fi
     
     rm -f "$TMP_IMG"
+    echo "=== QR SCAN FINISHED ===" >> "$DEBUG_LOG"
     exit 0
 fi
 
