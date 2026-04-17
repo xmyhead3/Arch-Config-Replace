@@ -38,7 +38,16 @@ fi
 # -----------------------------------------------------------------------------
 handle_wallpaper_prep() {
     mkdir -p "$THUMB_DIR"
+    
+    # The lock is now inside the subshell. It stops duplicate thumbnailers,
+    # but never blocks the main script from opening/closing the widget instantly.
     (
+        LOCKFILE="/tmp/qs_manager_wallpaper.lock"
+        exec 9> "$LOCKFILE"
+        if ! flock -n 9; then
+            exit 0
+        fi
+
         for thumb in "$THUMB_DIR"/*; do
             [ -e "$thumb" ] || continue
             filename=$(basename "$thumb")
@@ -80,12 +89,12 @@ handle_wallpaper_prep() {
 
     if pgrep -a "mpvpaper" > /dev/null; then
         CURRENT_SRC=$(pgrep -a mpvpaper | grep -o "$SRC_DIR/[^' ]*" | head -n1)
-        CURRENT_SRC=$(basename "$CURRENT_SRC")
+        [ -n "$CURRENT_SRC" ] && CURRENT_SRC=$(basename "$CURRENT_SRC")
     fi
 
     if [ -z "$CURRENT_SRC" ] && command -v swww >/dev/null; then
         CURRENT_SRC=$(swww query 2>/dev/null | grep -o "$SRC_DIR/[^ ]*" | head -n1)
-        CURRENT_SRC=$(basename "$CURRENT_SRC")
+        [ -n "$CURRENT_SRC" ] && CURRENT_SRC=$(basename "$CURRENT_SRC")
     fi
 
     if [ -n "$CURRENT_SRC" ]; then
@@ -141,8 +150,6 @@ fi
 if [[ "$ACTION" == "open" || "$ACTION" == "toggle" ]]; then
     CURRENT_MODE=$(cat "$NETWORK_MODE_FILE" 2>/dev/null)
 
-    # QML reads its own in-memory state to decide open vs close now.
-    # We just blindly pass the intended action to the QML watcher.
     if [[ "$TARGET" == "network" ]]; then
         handle_network_prep
         [[ -n "$SUBTARGET" ]] && echo "$SUBTARGET" > "$NETWORK_MODE_FILE"
