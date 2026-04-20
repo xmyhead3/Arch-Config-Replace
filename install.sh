@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.5.2-2"
+DOTS_VERSION="1.5.3"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 # Prevent the TTY/Console from falling asleep (black screen) during long package builds
@@ -11,13 +11,38 @@ setterm -blank 0 -powerdown 0 2>/dev/null || true
 printf '\033[9;0]' 2>/dev/null || true
 
 # Global Variables & Initial States (Defaults)
-USER_PICTURES_DIR="$(xdg-user-dir PICTURES 2>/dev/null)"
-[[ -z "$USER_PICTURES_DIR" || "$USER_PICTURES_DIR" == "$HOME" ]] && USER_PICTURES_DIR="$HOME/Pictures"
-USER_PICTURES_DIR="${USER_PICTURES_DIR%/}" # Strip trailing slash if present
+# Read from user-dirs.dirs first (most reliable), then xdg-user-dir, then hardcoded fallback
+USER_PICTURES_DIR=""
 
-USER_VIDEOS_DIR="$(xdg-user-dir VIDEOS 2>/dev/null)"
-[[ -z "$USER_VIDEOS_DIR" || "$USER_VIDEOS_DIR" == "$HOME" ]] && USER_VIDEOS_DIR="$HOME/Videos"
-USER_VIDEOS_DIR="${USER_VIDEOS_DIR%/}" # Strip trailing slash if present
+if [ -f "$HOME/.config/user-dirs.dirs" ]; then
+    USER_PICTURES_DIR=$(grep '^XDG_PICTURES_DIR' "$HOME/.config/user-dirs.dirs" | cut -d= -f2 | tr -d '"' | sed "s|\$HOME|$HOME|g")
+fi
+
+if [[ -z "$USER_PICTURES_DIR" || "$USER_PICTURES_DIR" == "$HOME" ]]; then
+    USER_PICTURES_DIR="$(xdg-user-dir PICTURES 2>/dev/null)"
+fi
+
+if [[ -z "$USER_PICTURES_DIR" || "$USER_PICTURES_DIR" == "$HOME" ]]; then
+    USER_PICTURES_DIR="$HOME/Pictures"
+fi
+
+USER_PICTURES_DIR="${USER_PICTURES_DIR%/}"
+
+USER_VIDEOS_DIR=""
+
+if [ -f "$HOME/.config/user-dirs.dirs" ]; then
+    USER_VIDEOS_DIR=$(grep '^XDG_VIDEOS_DIR' "$HOME/.config/user-dirs.dirs" | cut -d= -f2 | tr -d '"' | sed "s|\$HOME|$HOME|g")
+fi
+
+if [[ -z "$USER_VIDEOS_DIR" || "$USER_VIDEOS_DIR" == "$HOME" ]]; then
+    USER_VIDEOS_DIR="$(xdg-user-dir VIDEOS 2>/dev/null)"
+fi
+
+if [[ -z "$USER_VIDEOS_DIR" || "$USER_VIDEOS_DIR" == "$HOME" ]]; then
+    USER_VIDEOS_DIR="$HOME/Videos"
+fi
+
+USER_VIDEOS_DIR="${USER_VIDEOS_DIR%/}"
 
 WALLPAPER_DIR="$USER_PICTURES_DIR/Wallpapers"
 WEATHER_API_KEY=""
@@ -1033,9 +1058,17 @@ sudo -v
 # --- 0. Resolve Package Conflicts ---
 echo -e "\n${C_CYAN}[ INFO ]${RESET} Resolving potential package conflicts..."
 
-# Hard-clear jack & jack2 immediately to prevent the "impossible conflict" with pipewire-jack
-echo -e "  -> Forcefully clearing 'jack' and 'jack2' for pipewire-jack..."
-sudo pacman -Rdd --noconfirm jack jack2 > /dev/null 2>&1 || true
+for jack_pkg in jack jack2 jack2-dbus; do
+    if pacman -Qq "$jack_pkg" &>/dev/null; then
+        echo -e "  -> Removing conflicting package '$jack_pkg'..."
+        sudo pacman -Rdd --noconfirm "$jack_pkg" 2>/dev/null || true
+    fi
+done
+
+# Pre-install pipewire-jack before the main loop so it owns the jack provider slot
+# before any other package can pull in jack/jack2 as a dependency
+yes "Y" | $PKG_MANAGER pipewire-jack > /dev/null 2>&1 || true
+
 
 CONFLICTING_PKGS=("swayosd" "quickshell" "matugen" "go-yq")
 for cpkg in "${CONFLICTING_PKGS[@]}"; do
@@ -1420,6 +1453,27 @@ systemctl --user start pipewire wireplumber pipewire-pulse 2>/dev/null || true
 sudo systemctl enable --now swayosd-libinput-backend.service 2>/dev/null || true
 printf "  -> SwayOSD libinput backend enabled %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
 
+# --- Enable EasyEffects as a user service ---
+mkdir -p "$HOME/.config/systemd/user"
+cat <<EOF > "$HOME/.config/systemd/user/easyeffects.service"
+[Unit]
+Description=EasyEffects daemon
+PartOf=graphical-session.target
+After=graphical-session.target
+After=pipewire.service
+After=wireplumber.service
+
+[Service]
+ExecStart=/usr/bin/easyeffects --service-mode
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+systemctl --user daemon-reload 2>/dev/null || true
+systemctl --user enable easyeffects.service 2>/dev/null || true
+printf "  -> EasyEffects daemon service enabled %-12s ${C_GREEN}[ OK ]${RESET}\n" ""
 
 if [ "$INSTALL_ZSH" = true ] && command -v zsh &> /dev/null; then
     if [ -f "$HOME/.zshrc" ]; then

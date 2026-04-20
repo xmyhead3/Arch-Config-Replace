@@ -4,6 +4,30 @@
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 export PULSE_RUNTIME_PATH="$XDG_RUNTIME_DIR/pulse"
 
+# ---------------------------------------------------------
+# DEPENDENCY CHECK
+# ---------------------------------------------------------
+# First check for notify-send so we can display errors
+if ! command -v notify-send &> /dev/null; then
+    echo "ERROR: notify-send is not installed. Cannot display missing dependencies."
+    exit 1
+fi
+
+REQUIRED_CMDS=("gpu-screen-recorder" "grim" "satty" "wl-copy" "pactl" "quickshell" "zbarimg" "python3")
+MISSING_CMDS=()
+
+for cmd in "${REQUIRED_CMDS[@]}"; do
+    if ! command -v "$cmd" &> /dev/null; then
+        MISSING_CMDS+=("$cmd")
+    fi
+done
+
+if [ ${#MISSING_CMDS[@]} -ne 0 ]; then
+    notify-send -u critical -a "Screenshot System" "Missing Dependencies" "Cannot start. Please install:\n${MISSING_CMDS[*]}"
+    exit 1
+fi
+# ---------------------------------------------------------
+
 # Directories
 SAVE_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 RECORD_DIR="${XDG_VIDEOS_DIR:-$HOME/Videos}/Recordings"
