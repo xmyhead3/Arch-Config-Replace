@@ -140,17 +140,20 @@ if [ "$STATUS" = "Playing" ] || [ "$STATUS" = "Paused" ]; then
     player_raw=$($PT status -f "{{playerName}}" 2>/dev/null | head -n 1)
     player_nice="${player_raw^}"
 
-    # Adding a fast timeout to pactl as well, since audio sockets can hang on cold boot
-    sink_name=$(timeout 0.5 pactl get-default-sink 2>/dev/null)
+    # THE FIX: Use native WirePlumber (wpctl) instead of pactl to prevent D-Bus deadlocks
     dev_icon="󰓃"; dev_name="Speaker"
-    if [[ "$sink_name" == *"bluez"* ]]; then
+    node_name=$(timeout 0.5 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node\.name/ {print $2}')
+    node_desc=$(timeout 0.5 wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk -F'"' '/node\.description/ {print $2}')
+
+    if [[ "$node_name" == *"bluez"* ]]; then
         dev_icon="󰂯"
-        readable_name=$(timeout 0.5 pactl list sinks | grep -A 20 "$sink_name" | grep -m 1 "Description:" | cut -d: -f2 | xargs)
-        if [ -n "$readable_name" ]; then dev_name="$readable_name"; else dev_name="Bluetooth"; fi
-    elif [[ "$sink_name" == *"usb"* ]]; then
+        [ -n "$node_desc" ] && dev_name="$node_desc" || dev_name="Bluetooth"
+    elif [[ "$node_name" == *"usb"* ]]; then
         dev_icon="󰓃"; dev_name="USB Audio"
-    elif [[ "$sink_name" == *"pci"* ]]; then
+    elif [[ "$node_name" == *"pci"* ]]; then
         dev_icon="󰓃"; dev_name="System"
+    elif [ -n "$node_desc" ]; then
+        dev_name="$node_desc"
     fi
 
     # --- 7. JSON OUTPUT ---

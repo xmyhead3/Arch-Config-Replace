@@ -74,9 +74,11 @@ Item {
     function alpha(color, a) { return Qt.rgba(color.r, color.g, color.b, a); }
 
     // Global Liquid Wave Animator
+    property bool widgetVisible: parent !== null && parent.visible !== undefined ? parent.visible : true
+    
     property real globalWavePhase: 0.0
     NumberAnimation on globalWavePhase {
-        from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: true
+        from: 0; to: Math.PI * 2; duration: 1800; loops: Animation.Infinite; running: root.widgetVisible
     }
 
     // =========================================================
@@ -246,6 +248,7 @@ Item {
 
             Connections {
                 target: root
+                enabled: root.widgetVisible && ls.value > 0
                 function onGlobalWavePhaseChanged() { fluidCanvas.requestPaint(); }
             }
         }

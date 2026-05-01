@@ -111,8 +111,8 @@ Item {
         }
     }
 
-    Shortcut { sequence: "Ctrl+Z"; onActivated: root.undo() }
-    Shortcut { sequence: "Ctrl+Shift+Z"; onActivated: root.redo() }
+    Shortcut { enabled: root.visible; sequence: "Ctrl+Z"; onActivated: root.undo() }
+    Shortcut { enabled: root.visible; sequence: "Ctrl+Shift+Z"; onActivated: root.redo() }
 
     // =========================================================
     // --- MASTER ORIENTATION CONTAINER
@@ -188,7 +188,7 @@ Item {
                     anchors.fill: parent
                     z: 1
                     
-                    renderTarget: Canvas.Image 
+		    renderTarget: Canvas.FramebufferObject
                     
                     property real lastX: -1
                     property real lastY: -1
@@ -1117,4 +1117,3 @@ Item {
         }
     }
 }
-
