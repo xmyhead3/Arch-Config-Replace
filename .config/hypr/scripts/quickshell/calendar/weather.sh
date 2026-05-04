@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Force standard C locale for number formatting (fixes printf decimal/comma issues on varying OS locales)
-export LC_NUMERIC=C
+# Force standard C locale for number formatting and date parsing (fixes printf and date command issues on varying OS locales)
+export LC_ALL=C
 
 # Paths
 cache_dir="$HOME/.cache/quickshell/weather"
@@ -33,11 +33,11 @@ mkdir -p "${cache_dir}"
 
 get_icon() {
     case $1 in
-        "50d"|"50n") icon=""; quote="Mist" ;;
+        "50d"|"50n") icon="󰖑"; quote="Mist" ;;
         "01d") icon=""; quote="Sunny" ;;
         "01n") icon=""; quote="Clear" ;;
         "02d"|"02n"|"03d"|"03n"|"04d"|"04n") icon=""; quote="Cloudy" ;;
-        "09d"|"09n"|"10d"|"10n") icon=""; quote="Rainy" ;;
+        "09d"|"09n"|"10d"|"10n") icon="󰖗"; quote="Rainy" ;;
         "11d"|"11n") icon=""; quote="Storm" ;;
         "13d"|"13n") icon=""; quote="Snow" ;;
         *) icon=""; quote="Unknown" ;;
@@ -237,6 +237,7 @@ get_data() {
         echo "{ \"current_temp\": \"${c_temp}\", \"current_icon\": \"${c_icon}\", \"current_hex\": \"${c_hex}\", \"forecast\": ${final_json} }" > "${json_file}"
     fi
 }
+
 # --- MODE HANDLING ---
 if [[ "$1" == "--getdata" ]]; then
     get_data
@@ -324,6 +325,3 @@ elif [[ "$1" == "--current-hex" ]]; then
     fi
     echo "$hex"
 fi
-
-
-

@@ -167,7 +167,7 @@ Item {
                     export RELOAD_SCRIPT="${escapeBash(reloadScript)}"
                     export TARGET_MONITORS="${escOutputs}"
                     
-                    cp "$DEST_FILE" /tmp/lock_bg.png || true
+                    cp "$DEST_FILE" ${Quickshell.env("HOME")}/.cache/current_wallpaper.png || true
                     pkill mpvpaper || true
                     
                     echo "" >> ${logFile}
@@ -209,7 +209,7 @@ Item {
                         cp "$TEMP_THUMB" "$FINAL_THUMB"
                         magick "$DEST_FILE" -resize x420 -quality 70 "$FINAL_THUMB" || true
                         
-                        cp "$DEST_FILE" /tmp/lock_bg.png || true
+                        cp "$DEST_FILE" ${Quickshell.env("HOME")}/.cache/current_wallpaper.png || true
                         pkill mpvpaper || true
                         
                         echo "" >> ${logFile}
@@ -266,7 +266,7 @@ Item {
         }
 
         const fullScript = `
-            cp "${isVideo ? escThumb : escOriginal}" /tmp/lock_bg.png || true
+            cp "${isVideo ? escThumb : escOriginal}" ${Quickshell.env("HOME")}/.cache/current_wallpaper.png || true
             pkill mpvpaper || true
             
             ${wallpaperCmd}

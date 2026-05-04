@@ -8,7 +8,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Pam
-import "../" 
+import "../"
 
 ShellRoot {
     id: root
@@ -109,7 +109,7 @@ ShellRoot {
                 readonly property real sc: scaler.baseScale
                 // --------------------------------
 
-                property string staticWallpaperPath: "file:///tmp/lock_bg.png"
+                property string staticWallpaperPath: "file://" + Quickshell.env("HOME") + "/.cache/current_wallpaper.png"
 
                 property string batPct: "100"
                 property string batStatus: "AC"

@@ -354,7 +354,8 @@ Item {
 
     onActiveModeChanged: {
         if (!window.ignoreNextModeFileUpdate) {
-            Quickshell.execDetached(["bash", "-c", "echo '" + window.activeMode + "' > '" + window.modeFilePath + "'"]);
+            // FIX: Guaranteed directory creation before state write to prevent ghost cache races
+            Quickshell.execDetached(["bash", "-c", "mkdir -p '" + window.cacheDir + "' && echo '" + window.activeMode + "' > '" + window.modeFilePath + "'"]);
         }
         window.ignoreNextModeFileUpdate = false;
         

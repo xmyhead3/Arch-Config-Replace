@@ -3,7 +3,7 @@
 # ==============================================================================
 # Script Versioning & Initialization
 # ==============================================================================
-DOTS_VERSION="1.7.1-1"
+DOTS_VERSION="1.7.2"
 VERSION_FILE="$HOME/.local/state/imperative-dots-version"
 
 # ==============================================================================
@@ -892,6 +892,11 @@ prompt_optional_features_menu() {
         DM_LABEL="Replace $CURRENT_DM with SDDM"
     fi
 
+    local HAS_HISTORY=false
+    if [ "$LOCAL_VERSION" != "Not Installed" ] && [ -n "$LOCAL_VERSION" ]; then
+        HAS_HISTORY=true
+    fi
+
     while true; do
         draw_header
         echo -e "${BOLD}${C_CYAN}=== Optional Component Setup ===${RESET}\n"
@@ -900,17 +905,25 @@ prompt_optional_features_menu() {
         local S_NVIM=$( [ "$OPT_NVIM" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${DIM}[ ]${RESET}" )
         local S_ZSH=$( [ "$OPT_ZSH" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${DIM}[ ]${RESET}" )
         local S_WP=$( [ "$OPT_WALLPAPERS" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${DIM}[ ]${RESET}" )
-        local S_KB_OVR=$( [ "$OPT_OVERRIDE_KEYBINDS" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${DIM}[ ]${RESET}" )
-        local S_STARTUPS_OVR=$( [ "$OPT_OVERRIDE_STARTUPS" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${DIM}[ ]${RESET}" )
 
         local MENU_ITEMS="1. $S_SDDM $DM_LABEL\n"
         MENU_ITEMS+="2. $S_NVIM Neovim Matugen Configuration\n"
         MENU_ITEMS+="3. $S_ZSH Zsh Shell Setup\n"
         MENU_ITEMS+="4. $S_WP Download FULL Wallpaper Pack (Unchecked = 3 Random)\n"
-        MENU_ITEMS+="5. $S_KB_OVR Overwrite Local Keybinds with Upstream Defaults\n"
-        MENU_ITEMS+="6. $S_STARTUPS_OVR Overwrite Local Startups with Upstream Defaults\n"
-        MENU_ITEMS+="7. ${BOLD}${C_GREEN}Proceed with Installation / Update${RESET}\n"
-        MENU_ITEMS+="8. ${DIM}Back to Main Menu${RESET}"
+
+        if [ "$HAS_HISTORY" = true ]; then
+            local S_KB_OVR=$( [ "$OPT_OVERRIDE_KEYBINDS" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${DIM}[ ]${RESET}" )
+            local S_STARTUPS_OVR=$( [ "$OPT_OVERRIDE_STARTUPS" = true ] && echo -e "${C_GREEN}[✓]${RESET}" || echo -e "${DIM}[ ]${RESET}" )
+            MENU_ITEMS+="5. $S_KB_OVR Overwrite Local Keybinds with Upstream Defaults\n"
+            MENU_ITEMS+="6. $S_STARTUPS_OVR Overwrite Local Startups with Upstream Defaults\n"
+            MENU_ITEMS+="7. ${BOLD}${C_GREEN}Proceed with Installation / Update${RESET}\n"
+            MENU_ITEMS+="8. ${DIM}Back to Main Menu${RESET}"
+        else
+            OPT_OVERRIDE_KEYBINDS=false
+            OPT_OVERRIDE_STARTUPS=false
+            MENU_ITEMS+="5. ${BOLD}${C_GREEN}Proceed with Installation / Update${RESET}\n"
+            MENU_ITEMS+="6. ${DIM}Back to Main Menu${RESET}"
+        fi
 
         local choice
         choice=$(echo -e "$MENU_ITEMS" | fzf \
@@ -923,53 +936,77 @@ prompt_optional_features_menu() {
             --pointer=">" \
             --header=" SPACE or ENTER to toggle. Select Proceed when ready. ")
 
+        local break_and_proceed=false
+
         case "$choice" in
             *"1."*) OPT_SDDM=$([ "$OPT_SDDM" = true ] && echo false || echo true) ;;
             *"2."*) OPT_NVIM=$([ "$OPT_NVIM" = true ] && echo false || echo true) ;;
             *"3."*) OPT_ZSH=$([ "$OPT_ZSH" = true ] && echo false || echo true) ;;
             *"4."*) OPT_WALLPAPERS=$([ "$OPT_WALLPAPERS" = true ] && echo false || echo true) ;;
-            *"5."*) OPT_OVERRIDE_KEYBINDS=$([ "$OPT_OVERRIDE_KEYBINDS" = true ] && echo false || echo true) ;;
-            *"6."*) OPT_OVERRIDE_STARTUPS=$([ "$OPT_OVERRIDE_STARTUPS" = true ] && echo false || echo true) ;;
-            *"7."*) 
-                if [ "$OPT_SDDM" = true ]; then
-                    if [[ -z "$CURRENT_DM" ]]; then
-                        INSTALL_SDDM=true
-                        SETUP_SDDM_THEME=true
-                        PKGS+=("sddm")
-                    elif [[ "$CURRENT_DM" == "sddm" ]]; then
-                        SETUP_SDDM_THEME=true
-                    else
-                        INSTALL_SDDM=true
-                        REPLACE_DM=true
-                        SETUP_SDDM_THEME=true
-                        PKGS+=("sddm")
-                    fi
-                    
-                    clear
-                    draw_header
-                    echo -e "${BOLD}${C_CYAN}=== SDDM Configuration ===${RESET}\n"
-                    echo -e "Do you want to force SDDM to run natively on Wayland?"
-                    echo -e "${DIM}(Note: May cause issues with some NVIDIA setups or older SDDM versions. Default is No.)${RESET}"
-                    read -p "Force SDDM Wayland backend? (y/N): " sddm_wayland
-                    if [[ "$sddm_wayland" =~ ^[Yy]$ ]]; then
-                        SDDM_WAYLAND=true
-                    else
-                        SDDM_WAYLAND=false
-                    fi
+            *"5."*) 
+                if [ "$HAS_HISTORY" = true ]; then
+                    OPT_OVERRIDE_KEYBINDS=$([ "$OPT_OVERRIDE_KEYBINDS" = true ] && echo false || echo true)
+                else
+                    break_and_proceed=true
                 fi
-                if [ "$OPT_NVIM" = true ]; then
-                    INSTALL_NVIM=true
-                    PKGS+=("neovim" "lua-language-server" "unzip" "nodejs" "npm" "python3")
-                fi
-                if [ "$OPT_ZSH" = true ]; then
-                    INSTALL_ZSH=true
-                    PKGS+=("zsh")
-                fi
-                return 0 
                 ;;
-            *"8."*) return 1 ;;
+            *"6."*) 
+                if [ "$HAS_HISTORY" = true ]; then
+                    OPT_OVERRIDE_STARTUPS=$([ "$OPT_OVERRIDE_STARTUPS" = true ] && echo false || echo true)
+                else
+                    return 1
+                fi
+                ;;
+            *"7."*) 
+                if [ "$HAS_HISTORY" = true ]; then
+                    break_and_proceed=true
+                fi
+                ;;
+            *"8."*) 
+                if [ "$HAS_HISTORY" = true ]; then
+                    return 1
+                fi
+                ;;
             *) ;;
         esac
+
+        if [ "$break_and_proceed" = true ]; then
+            if [ "$OPT_SDDM" = true ]; then
+                if [[ -z "$CURRENT_DM" ]]; then
+                    INSTALL_SDDM=true
+                    SETUP_SDDM_THEME=true
+                    PKGS+=("sddm")
+                elif [[ "$CURRENT_DM" == "sddm" ]]; then
+                    SETUP_SDDM_THEME=true
+                else
+                    INSTALL_SDDM=true
+                    REPLACE_DM=true
+                    SETUP_SDDM_THEME=true
+                    PKGS+=("sddm")
+                fi
+                
+                clear
+                draw_header
+                echo -e "${BOLD}${C_CYAN}=== SDDM Configuration ===${RESET}\n"
+                echo -e "Do you want to force SDDM to run natively on Wayland?"
+                echo -e "${DIM}(Note: May cause issues with some NVIDIA setups or older SDDM versions. Default is No.)${RESET}"
+                read -p "Force SDDM Wayland backend? (y/N): " sddm_wayland
+                if [[ "$sddm_wayland" =~ ^[Yy]$ ]]; then
+                    SDDM_WAYLAND=true
+                else
+                    SDDM_WAYLAND=false
+                fi
+            fi
+            if [ "$OPT_NVIM" = true ]; then
+                INSTALL_NVIM=true
+                PKGS+=("neovim" "lua-language-server" "unzip" "nodejs" "npm" "python3")
+            fi
+            if [ "$OPT_ZSH" = true ]; then
+                INSTALL_ZSH=true
+                PKGS+=("zsh")
+            fi
+            return 0 
+        fi
     done
 }
 
@@ -1313,7 +1350,7 @@ else
     echo "  -> Generating fresh configuration from upstream defaults..."
 fi
 
-# Pure jq merge logic (Zero Bash variables handling the JSON values!)
+# Pure jq merge logic: The "Best of Both Worlds" Smart Merge
 jq -n --slurpfile local "$OLD_JSON" --slurpfile up "$UPSTREAM_JSON" \
    --arg langs "$KB_LAYOUTS" \
    --arg wpdir "$WALLPAPER_DIR" \
@@ -1324,36 +1361,35 @@ jq -n --slurpfile local "$OLD_JSON" --slurpfile up "$UPSTREAM_JSON" \
    $up[0] as $u |
    (if ($local | length > 0) then $local[0] else $u end) as $l |
    
-   $u |
-   .uiScale = ($l.uiScale // .uiScale) |
-   .openGuideAtStartup = (if ($l | type == "object" and has("openGuideAtStartup")) then $l.openGuideAtStartup else .openGuideAtStartup end) |
-   .topbarHelpIcon = (if ($l | type == "object" and has("topbarHelpIcon")) then $l.topbarHelpIcon else .topbarHelpIcon end) |
-   .workspaceCount = ($l.workspaceCount // .workspaceCount) |
-   .monitors = ($l.monitors // .monitors) |
+   ($u + $l) | 
    .language = $langs |
    .wallpaperDir = $wpdir |
    .kbOptions = $kbopt |
    
    .keybinds = (
-       if $ovr_kb == "true" then
-           $u.keybinds
-       else
+       if $ovr_kb == "true" then 
+           $u.keybinds 
+       else 
            ($l.keybinds | map(.command)) as $local_cmds |
-           ($u.keybinds | map(select(.command as $cmd | ($local_cmds | index($cmd)) == null))) as $filtered_up |
-           ($filtered_up | map({key: ((.mods // "") + "|" + (.key // "")), value: .}) | from_entries) as $ud |
-           ($l.keybinds | map({key: ((.mods // "") + "|" + (.key // "")), value: .}) | from_entries) as $ld |
-           ($ud * $ld) | map(.)
+           ($l.keybinds | map((.mods // "") + "|" + (.key // ""))) as $local_keys |
+           
+           ($u.keybinds | map(select(
+               (.command as $cmd | ($local_cmds | index($cmd)) == null) and
+               (((.mods // "") + "|" + (.key // "")) as $k | ($local_keys | index($k)) == null)
+           ))) as $new_upstream |
+           
+           ($l.keybinds + $new_upstream)
        end
-       | unique_by((.mods // "") + "|" + (.key // "")) | sort_by(.key)
    ) |
    
    .startup = (
-       if $ovr_su == "true" then
-           $u.startup
-       else
-           $l.startup + ($u.startup | map(select(.command as $cmd | ($l.startup | map(.command) | index($cmd)) == null)))
+       if $ovr_su == "true" then 
+           $u.startup 
+       else 
+           ($l.startup | map(.command)) as $local_startups |
+           ($u.startup | map(select(.command as $cmd | ($local_startups | index($cmd)) == null))) as $new_startups |
+           ($l.startup + $new_startups)
        end
-       | unique_by(.command)
    )
 ' > "$SETTINGS_FILE"
 
