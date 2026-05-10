@@ -3,6 +3,7 @@ import QtQuick.Window
 import QtQuick.Effects
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtMultimedia
 import Quickshell
 import Quickshell.Io
 import "../"
@@ -22,6 +23,9 @@ Item {
     }
 
     // --- Helper Functions ---
+    function showHint(detail, mouseArea) {}
+    function hideHint() {}
+
     function formatBytes(bytes) {
         if (bytes === 0 || isNaN(bytes)) return '0 B';
         var k = 1024;
@@ -38,45 +42,67 @@ Item {
         event.accepted = true;
     }
     Keys.onTabPressed: {
-        let next = (currentTab + 1) % tabNames.length;
-        if (next === 0) next = 1; // Skip Settings Tab visually
-        currentTab = next;
+        let next = (root.currentTab + 1) % root.tabNames.length;
+        if (next === 0) next = 1;
+        root.setTab(next);
         event.accepted = true;
     }
     Keys.onBacktabPressed: {
-        let prev = (currentTab - 1 + tabNames.length) % tabNames.length;
-        if (prev === 0) prev = tabNames.length - 1; // Skip Settings Tab visually
-        currentTab = prev;
+        let prev = (root.currentTab - 1 + root.tabNames.length) % root.tabNames.length;
+        if (prev === 0) prev = root.tabNames.length - 1;
+        root.setTab(prev);
         event.accepted = true;
     }
     Keys.onLeftPressed: {
-        if (currentTab === 2) { 
-            if (selectedModuleIndex > 0) {
-                selectedModuleIndex--;
-                modulesList.positionViewAtIndex(selectedModuleIndex, ListView.Contain);
+        if (root.currentTab === 2) {
+            if (root.selectedModuleIndex > 0) {
+                root.selectedModuleIndex--;
+                modulesList.positionViewAtIndex(root.selectedModuleIndex, ListView.Contain);
             }
-            event.accepted = true;
+        } else if (root.currentTab === 4) {
+            let next = (root.selectedContinent - 1 + root.continentData.length) % root.continentData.length;
+            if (next !== root.selectedContinent) {
+                chipContainer.opacity = 0.0;
+                continentFadeTimer.targetIndex = next;
+                continentFadeTimer.restart();
+            }
+        } else {
+            let prev = (root.currentTab - 1 + root.tabNames.length) % root.tabNames.length;
+            if (prev === 0) prev = root.tabNames.length - 1;
+            root.setTab(prev);
         }
+        event.accepted = true;
     }
     Keys.onRightPressed: {
-        if (currentTab === 2) { 
-            if (selectedModuleIndex < modulesDataModel.count - 1) {
-                selectedModuleIndex++;
-                modulesList.positionViewAtIndex(selectedModuleIndex, ListView.Contain);
+        if (root.currentTab === 2) {
+            if (root.selectedModuleIndex < modulesDataModel.count - 1) {
+                root.selectedModuleIndex++;
+                modulesList.positionViewAtIndex(root.selectedModuleIndex, ListView.Contain);
             }
-            event.accepted = true;
+        } else if (root.currentTab === 4) {
+            let next = (root.selectedContinent + 1) % root.continentData.length;
+            if (next !== root.selectedContinent) {
+                chipContainer.opacity = 0.0;
+                continentFadeTimer.targetIndex = next;
+                continentFadeTimer.restart();
+            }
+        } else {
+            let next = (root.currentTab + 1) % root.tabNames.length;
+            if (next === 0) next = 1;
+            root.setTab(next);
         }
+        event.accepted = true;
     }
     Keys.onUpPressed: {
-        let prev = (currentTab - 1 + tabNames.length) % tabNames.length;
-        if (prev === 0) prev = tabNames.length - 1;
-        currentTab = prev;
+        let prev = (root.currentTab - 1 + root.tabNames.length) % root.tabNames.length;
+        if (prev === 0) prev = root.tabNames.length - 1;
+        root.setTab(prev);
         event.accepted = true;
     }
     Keys.onDownPressed: {
-        let next = (currentTab + 1) % tabNames.length;
+        let next = (root.currentTab + 1) % root.tabNames.length;
         if (next === 0) next = 1;
-        currentTab = next;
+        root.setTab(next);
         event.accepted = true;
     }
     Keys.onReturnPressed: {
@@ -111,6 +137,214 @@ Item {
     readonly property color yellow: _theme.yellow
     readonly property color red: _theme.red
 
+    property var continentData: [
+        { region: "America", icon: "", color: root.blue, zones: [
+            { disp: "Argentina", zone: "America/Argentina/Buenos_Aires" },
+            { disp: "Bahamas", zone: "America/Nassau" },
+            { disp: "Bermuda", zone: "Atlantic/Bermuda" },
+            { disp: "Bolivia", zone: "America/La_Paz" },
+            { disp: "Brazil", zone: "America/Sao_Paulo" },
+            { disp: "Canada Atlantic", zone: "America/Halifax" },
+            { disp: "Canada Central", zone: "America/Winnipeg" },
+            { disp: "Canada Eastern", zone: "America/Toronto" },
+            { disp: "Canada Mountain", zone: "America/Edmonton" },
+            { disp: "Canada Pacific", zone: "America/Vancouver" },
+            { disp: "Canada Sask", zone: "America/Regina" },
+            { disp: "Chile", zone: "America/Santiago" },
+            { disp: "Colombia", zone: "America/Bogota" },
+            { disp: "Costa Rica", zone: "America/Costa_Rica" },
+            { disp: "Cuba", zone: "America/Havana" },
+            { disp: "Dominican Rep", zone: "America/Santo_Domingo" },
+            { disp: "Ecuador", zone: "America/Guayaquil" },
+            { disp: "Guatemala", zone: "America/Guatemala" },
+            { disp: "Haiti", zone: "America/Port-au-Prince" },
+            { disp: "Mexico", zone: "America/Mexico_City" },
+            { disp: "Panama", zone: "America/Panama" },
+            { disp: "Paraguay", zone: "America/Asuncion" },
+            { disp: "Peru", zone: "America/Lima" },
+            { disp: "Puerto Rico", zone: "America/Puerto_Rico" },
+            { disp: "USA Alaska", zone: "America/Anchorage" },
+            { disp: "USA Arizona", zone: "America/Phoenix" },
+            { disp: "USA Central", zone: "America/Chicago" },
+            { disp: "USA Eastern", zone: "America/New_York" },
+            { disp: "USA Hawaii", zone: "Pacific/Honolulu" },
+            { disp: "USA Mountain", zone: "America/Denver" },
+            { disp: "USA Pacific", zone: "America/Los_Angeles" },
+            { disp: "Uruguay", zone: "America/Montevideo" },
+            { disp: "Venezuela", zone: "America/Caracas" }
+        ] },
+        { region: "Europe", icon: "", color: root.mauve, zones: [
+            { disp: "Albania", zone: "Europe/Tirane" },
+            { disp: "Austria", zone: "Europe/Vienna" },
+            { disp: "Belarus", zone: "Europe/Minsk" },
+            { disp: "Belgium", zone: "Europe/Brussels" },
+            { disp: "Bosnia", zone: "Europe/Sarajevo" },
+            { disp: "Bulgaria", zone: "Europe/Sofia" },
+            { disp: "Croatia", zone: "Europe/Zagreb" },
+            { disp: "Czech Rep", zone: "Europe/Prague" },
+            { disp: "Denmark", zone: "Europe/Copenhagen" },
+            { disp: "Estonia", zone: "Europe/Tallinn" },
+            { disp: "Finland", zone: "Europe/Helsinki" },
+            { disp: "France", zone: "Europe/Paris" },
+            { disp: "Germany", zone: "Europe/Berlin" },
+            { disp: "Greece", zone: "Europe/Athens" },
+            { disp: "Hungary", zone: "Europe/Budapest" },
+            { disp: "Iceland", zone: "Atlantic/Reykjavik" },
+            { disp: "Ireland", zone: "Europe/Dublin" },
+            { disp: "Italy", zone: "Europe/Rome" },
+            { disp: "Latvia", zone: "Europe/Riga" },
+            { disp: "Lithuania", zone: "Europe/Vilnius" },
+            { disp: "Luxembourg", zone: "Europe/Luxembourg" },
+            { disp: "Malta", zone: "Europe/Malta" },
+            { disp: "Moldova", zone: "Europe/Chisinau" },
+            { disp: "Monaco", zone: "Europe/Monaco" },
+            { disp: "Netherlands", zone: "Europe/Amsterdam" },
+            { disp: "North Macedonia", zone: "Europe/Skopje" },
+            { disp: "Norway", zone: "Europe/Oslo" },
+            { disp: "Poland", zone: "Europe/Warsaw" },
+            { disp: "Portugal", zone: "Europe/Lisbon" },
+            { disp: "Romania", zone: "Europe/Bucharest" },
+            { disp: "Russia Moscow", zone: "Europe/Moscow" },
+            { disp: "Serbia", zone: "Europe/Belgrade" },
+            { disp: "Slovakia", zone: "Europe/Bratislava" },
+            { disp: "Slovenia", zone: "Europe/Ljubljana" },
+            { disp: "Spain", zone: "Europe/Madrid" },
+            { disp: "Sweden", zone: "Europe/Stockholm" },
+            { disp: "Switzerland", zone: "Europe/Zurich" },
+            { disp: "Turkey", zone: "Europe/Istanbul" },
+            { disp: "UK", zone: "Europe/London" },
+            { disp: "Ukraine", zone: "Europe/Kiev" }
+        ] },
+        { region: "Asia", icon: "", color: root.green, zones: [
+            { disp: "Afghanistan", zone: "Asia/Kabul" },
+            { disp: "Armenia", zone: "Asia/Yerevan" },
+            { disp: "Azerbaijan", zone: "Asia/Baku" },
+            { disp: "Bahrain", zone: "Asia/Bahrain" },
+            { disp: "Bangladesh", zone: "Asia/Dhaka" },
+            { disp: "Bhutan", zone: "Asia/Thimphu" },
+            { disp: "Cambodia", zone: "Asia/Phnom_Penh" },
+            { disp: "China", zone: "Asia/Shanghai" },
+            { disp: "Cyprus", zone: "Asia/Nicosia" },
+            { disp: "Georgia", zone: "Asia/Tbilisi" },
+            { disp: "Hong Kong", zone: "Asia/Hong_Kong" },
+            { disp: "India", zone: "Asia/Kolkata" },
+            { disp: "Indonesia Central", zone: "Asia/Makassar" },
+            { disp: "Indonesia West", zone: "Asia/Jakarta" },
+            { disp: "Iran", zone: "Asia/Tehran" },
+            { disp: "Iraq", zone: "Asia/Baghdad" },
+            { disp: "Israel", zone: "Asia/Tel_Aviv" },
+            { disp: "Japan", zone: "Asia/Tokyo" },
+            { disp: "Jordan", zone: "Asia/Amman" },
+            { disp: "Kazakhstan", zone: "Asia/Almaty" },
+            { disp: "Kuwait", zone: "Asia/Kuwait" },
+            { disp: "Kyrgyzstan", zone: "Asia/Bishkek" },
+            { disp: "Lebanon", zone: "Asia/Beirut" },
+            { disp: "Macau", zone: "Asia/Macau" },
+            { disp: "Malaysia", zone: "Asia/Kuala_Lumpur" },
+            { disp: "Maldives", zone: "Indian/Maldives" },
+            { disp: "Mongolia", zone: "Asia/Ulaanbaatar" },
+            { disp: "Myanmar", zone: "Asia/Yangon" },
+            { disp: "Nepal", zone: "Asia/Kathmandu" },
+            { disp: "Oman", zone: "Asia/Muscat" },
+            { disp: "Pakistan", zone: "Asia/Karachi" },
+            { disp: "Philippines", zone: "Asia/Manila" },
+            { disp: "Qatar", zone: "Asia/Qatar" },
+            { disp: "Saudi Arabia", zone: "Asia/Riyadh" },
+            { disp: "Singapore", zone: "Asia/Singapore" },
+            { disp: "South Korea", zone: "Asia/Seoul" },
+            { disp: "Sri Lanka", zone: "Asia/Colombo" },
+            { disp: "Syria", zone: "Asia/Damascus" },
+            { disp: "Taiwan", zone: "Asia/Taipei" },
+            { disp: "Thailand", zone: "Asia/Bangkok" },
+            { disp: "UAE", zone: "Asia/Dubai" },
+            { disp: "Uzbekistan", zone: "Asia/Tashkent" },
+            { disp: "Vietnam", zone: "Asia/Ho_Chi_Minh" },
+            { disp: "Yemen", zone: "Asia/Riyadh" }
+        ] },
+        { region: "Africa", icon: "", color: root.yellow, zones: [
+            { disp: "Algeria", zone: "Africa/Algiers" },
+            { disp: "Angola", zone: "Africa/Luanda" },
+            { disp: "Benin", zone: "Africa/Porto-Novo" },
+            { disp: "Botswana", zone: "Africa/Gaborone" },
+            { disp: "Burkina Faso", zone: "Africa/Ouagadougou" },
+            { disp: "Burundi", zone: "Africa/Bujumbura" },
+            { disp: "Cameroon", zone: "Africa/Douala" },
+            { disp: "Cape Verde", zone: "Atlantic/Cape_Verde" },
+            { disp: "CAR", zone: "Africa/Bangui" },
+            { disp: "Congo", zone: "Africa/Brazzaville" },
+            { disp: "Côte d'Ivoire", zone: "Africa/Abidjan" },
+            { disp: "Djibouti", zone: "Africa/Djibouti" },
+            { disp: "DR Congo", zone: "Africa/Kinshasa" },
+            { disp: "Egypt", zone: "Africa/Cairo" },
+            { disp: "Eq Guinea", zone: "Africa/Malabo" },
+            { disp: "Eritrea", zone: "Africa/Asmara" },
+            { disp: "Eswatini", zone: "Africa/Mbabane" },
+            { disp: "Ethiopia", zone: "Africa/Addis_Ababa" },
+            { disp: "Gabon", zone: "Africa/Libreville" },
+            { disp: "Gambia", zone: "Africa/Banjul" },
+            { disp: "Ghana", zone: "Africa/Accra" },
+            { disp: "Guinea", zone: "Africa/Conakry" },
+            { disp: "Guinea-Bissau", zone: "Africa/Bissau" },
+            { disp: "Kenya", zone: "Africa/Nairobi" },
+            { disp: "Lesotho", zone: "Africa/Maseru" },
+            { disp: "Liberia", zone: "Africa/Monrovia" },
+            { disp: "Libya", zone: "Africa/Tripoli" },
+            { disp: "Madagascar", zone: "Indian/Antananarivo" },
+            { disp: "Malawi", zone: "Africa/Blantyre" },
+            { disp: "Mali", zone: "Africa/Bamako" },
+            { disp: "Mauritania", zone: "Africa/Nouakchott" },
+            { disp: "Mauritius", zone: "Indian/Mauritius" },
+            { disp: "Morocco", zone: "Africa/Casablanca" },
+            { disp: "Mozambique", zone: "Africa/Maputo" },
+            { disp: "Namibia", zone: "Africa/Windhoek" },
+            { disp: "Niger", zone: "Africa/Niamey" },
+            { disp: "Nigeria", zone: "Africa/Lagos" },
+            { disp: "Réunion", zone: "Indian/Reunion" },
+            { disp: "Rwanda", zone: "Africa/Kigali" },
+            { disp: "São Tomé", zone: "Africa/Sao_Tome" },
+            { disp: "Senegal", zone: "Africa/Dakar" },
+            { disp: "Seychelles", zone: "Indian/Mahe" },
+            { disp: "Sierra Leone", zone: "Africa/Freetown" },
+            { disp: "Somalia", zone: "Africa/Mogadishu" },
+            { disp: "South Africa", zone: "Africa/Johannesburg" },
+            { disp: "South Sudan", zone: "Africa/Juba" },
+            { disp: "Sudan", zone: "Africa/Khartoum" },
+            { disp: "Tanzania", zone: "Africa/Dar_es_Salaam" },
+            { disp: "Togo", zone: "Africa/Lome" },
+            { disp: "Tunisia", zone: "Africa/Tunis" },
+            { disp: "Uganda", zone: "Africa/Kampala" },
+            { disp: "W Sahara", zone: "Africa/El_Aaiun" },
+            { disp: "Zambia", zone: "Africa/Lusaka" },
+            { disp: "Zimbabwe", zone: "Africa/Harare" }
+        ] },
+        { region: "Pacific", icon: "", color: root.sapphire, zones: [
+            { disp: "American Samoa", zone: "Pacific/Pago_Pago" },
+            { disp: "Australia Central", zone: "Australia/Adelaide" },
+            { disp: "Australia Eastern", zone: "Australia/Sydney" },
+            { disp: "Australia Lord Howe", zone: "Australia/Lord_Howe" },
+            { disp: "Australia Western", zone: "Australia/Perth" },
+            { disp: "Cook Is", zone: "Pacific/Rarotonga" },
+            { disp: "Fiji", zone: "Pacific/Fiji" },
+            { disp: "French Polynesia", zone: "Pacific/Tahiti" },
+            { disp: "Guam", zone: "Pacific/Guam" },
+            { disp: "Hawaii", zone: "Pacific/Honolulu" },
+            { disp: "Kiribati", zone: "Pacific/Tarawa" },
+            { disp: "Marshall Is", zone: "Pacific/Majuro" },
+            { disp: "Micronesia", zone: "Pacific/Chuuk" },
+            { disp: "New Caledonia", zone: "Pacific/Noumea" },
+            { disp: "New Zealand", zone: "Pacific/Auckland" },
+            { disp: "Niue", zone: "Pacific/Niue" },
+            { disp: "Papua New Guinea", zone: "Pacific/Port_Moresby" },
+            { disp: "Pitcairn Is", zone: "Pacific/Pitcairn" },
+            { disp: "Samoa", zone: "Pacific/Apia" },
+            { disp: "Solomon Is", zone: "Pacific/Guadalcanal" },
+            { disp: "Tonga", zone: "Pacific/Tongatapu" },
+            { disp: "Tuvalu", zone: "Pacific/Funafuti" },
+            { disp: "Vanuatu", zone: "Pacific/Efate" }
+        ] }
+    ]
+
+    property int selectedContinent: 0
     property real colorBlend: 0.0
     SequentialAnimation on colorBlend {
         loops: Animation.Infinite
@@ -126,6 +360,7 @@ Item {
     // GLOBALS
     // -------------------------------------------------------------------------
     property string dotsVersion: "Loading..."
+    property string dotsVersionName: ""
     property string updateRemoteVer: ""
     property string updateStatusText: "Click CHECK"
     property string updateStatusIcon: ""
@@ -134,12 +369,16 @@ Item {
 
     Process {
         id: versionReader
-        command: ["bash", "-c", "source ~/.local/state/wiferice-version 2>/dev/null && echo $LOCAL_VERSION || echo 'Unknown'"]
+        command: ["bash", "-c", "source ~/.local/state/wiferice-version 2>/dev/null && echo \"${LOCAL_VERSION:-Unknown}|${LOCAL_VERSION_NAME:-}\" || echo 'Unknown|'"]
         running: true
         stdout: StdioCollector {
             onStreamFinished: {
                 let out = this.text ? this.text.trim() : "";
-                if (out !== "") root.dotsVersion = out;
+                if (out !== "") {
+                    let parts = out.split("|");
+                    if (parts.length > 0) root.dotsVersion = parts[0];
+                    if (parts.length > 1) root.dotsVersionName = parts[1];
+                }
             }
         }
     }
@@ -147,7 +386,7 @@ Item {
     Process {
         id: updateChecker
         running: false
-        command: ["bash", "-c", "LOCAL_VER=$(source ~/.local/state/wiferice-version 2>/dev/null && echo \"$LOCAL_VERSION\" || echo \"Unknown\"); REMOTE_VER=$(curl -m 5 -s https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh | grep '^DOTS_VERSION=' | cut -d'\"' -f2); echo \"${LOCAL_VER:-Unknown}|${REMOTE_VER:-ERROR}\""]
+        command: ["bash", "-c", "LOCAL_VER=$(source ~/.local/state/wiferice-version 2>/dev/null && echo \"$LOCAL_VERSION\" || echo \"Unknown\"); REMOTE_VER=$(curl -m 5 -s https://raw.githubusercontent.com/eprahemi/WifeRice/master/install.sh | grep '^DOTS_VERSION=' | cut -d'\"' -f2); echo \"${LOCAL_VER:-Unknown}|${REMOTE_VER:-ERROR}\""]
         stdout: StdioCollector {
             onStreamFinished: {
                 let out = this.text ? this.text.trim() : "";
@@ -225,8 +464,20 @@ Item {
     // -------------------------------------------------------------------------
     property int currentTab: 1
     property int selectedModuleIndex: 0
-    property var tabNames: ["Settings", "System", "Modules", "Matugen", "About", "Updates"]
-    property var tabIcons: ["", "", "󰣆", "󰏘", "", "󰑖"]
+
+    function setTab(tab) {
+        if (currentTab === 2 && tab !== 2) {
+            videoPreview.pause()
+        }
+        currentTab = tab
+        if (currentTab === 2) {
+            if (previewContainer.isVideoModule && videoPreview.source !== "") {
+                videoPreview.play()
+            }
+        }
+    }
+    property var tabNames: ["Settings", "System", "Modules", "Matugen", "Time", "About", "Updates"]
+    property var tabIcons: ["", "", "󰣆", "󰏘", "", "", "󰑖"]
 
     property real introBase: 0.0
     property real introSidebar: 0.0
@@ -241,12 +492,27 @@ Item {
         ListElement { title: "FocusTime"; target: "focustime"; icon: "󰄉"; desc: "Built-in Pomodoro timer daemon \nwith session tracking."; preview: "previews/preview_focustime.png" }
         ListElement { title: "Volume Mixer"; target: "volume"; icon: "󰕾"; desc: "Pipewire integration for I/O \nvolume and stream routing."; preview: "previews/preview_volume.png" }
         ListElement { title: "Wallpaper Picker"; target: "wallpaper"; icon: ""; desc: "Live awww backend rendering \nwith Matugen color generation."; preview: "previews/preview_wallpaper.png" }
+        ListElement { title: "Himeno Sexy Scene"; target: "himeno"; icon: "󰎁"; desc: "Step on me mommy......\nI'd let her drain me dry.\nShe can ruin my life fr."; preview: "previews/himeno_clip.mp4" }
         ListElement { title: "Monitors"; target: "monitors"; icon: "󰍹"; desc: "Quick display management."; preview: "previews/preview_monitors.png" }
         ListElement { title: "Stewart AI"; target: "stewart"; icon: "󰚩"; desc: "Voice assistant integration.\n(Reserved for future, currently disabled)"; preview: "previews/preview_stewart.png" }
     }
 
+    Process {
+        id: fullVideoProcess
+        command: ["mpv", "--geometry=960x540", "--keepaspect-window", "/home/eprahemi/himeno_clip.mp4"]
+        running: false
+    }
+
+
+
     Component.onCompleted: { 
-        startupSequence.start(); 
+        startupSequence.start();
+        previewContainer.refreshPreview();
+    }
+
+    Component.onDestruction: {
+        videoPreview.stop()
+        fullVideoProcess.running = false
     }
 
     ParallelAnimation {
@@ -287,6 +553,12 @@ Item {
 
     SequentialAnimation {
         id: closeSequence
+        ScriptAction {
+            script: {
+                videoPreview.stop()
+                fullVideoProcess.running = false
+            }
+        }
         ParallelAnimation { 
             NumberAnimation { 
                 target: root
@@ -442,7 +714,7 @@ Item {
                                 Layout.alignment: Qt.AlignLeft 
                             }
                             Text { 
-                                text: "v" + (root.dotsVersion !== "Loading..." ? root.dotsVersion : "...")
+                                text: root.dotsVersion !== "Loading..." ? "v" + root.dotsVersion + (root.dotsVersionName !== "" ? " " + root.dotsVersionName : "") : "..."
                                 font.family: "JetBrains Mono"
                                 font.pixelSize: root.s(11)
                                 color: root.subtext0
@@ -501,10 +773,12 @@ Item {
                                     z: 1
                                     
                                     property bool isActive: root.currentTab === index
-                                    // Make it transparent if active so the highlight shows through
-                                    color: isActive ? "transparent" : (tabMa.containsMouse ? Qt.alpha(root.surface1, 0.5) : "transparent")
+                                    property bool tabHovered: false
+                                    color: isActive ? "transparent" : (tabHovered ? Qt.alpha(root.surface1, 0.5) : "transparent")
+                                    scale: isActive ? 1.0 : (tabHovered ? 1.04 : 1.0)
                                     
                                     Behavior on color { ColorAnimation { duration: 150 } }
+                                    Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -548,11 +822,14 @@ Item {
                                         anchors.fill: parent
                                         hoverEnabled: true
                                         cursorShape: Qt.PointingHandCursor
+                                        onEntered: parent.tabHovered = true
+                                        onExited: parent.tabHovered = false
                                         onClicked: {
                                             if (index === 0) {
+                                                root.setTab(0)
                                                 Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "toggle", "settings"]);
                                             } else {
-                                                root.currentTab = index;
+                                                root.setTab(index);
                                             }
                                         } 
                                     }
@@ -631,13 +908,15 @@ Item {
             // ------------------------------------------
             Item {
                 anchors.fill: parent
-                visible: root.currentTab === 1
-                opacity: visible ? 1.0 : 0.0
-                property real slideY: visible ? 0 : root.s(10)
+                opacity: root.currentTab === 1 ? 1.0 : 0.0
+                scale: root.currentTab === 1 ? 1.0 : 0.95
+                property real slideY: root.currentTab === 1 ? 0 : root.s(10)
+                enabled: root.currentTab === 1
                 
-                Behavior on slideY { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on slideY { NumberAnimation { duration: 300; easing.type: Easing.OutQuart } }
                 transform: Translate { y: slideY }
-                Behavior on opacity { NumberAnimation { duration: 250 } }
 
                 ListModel {
                     id: systemDataModel
@@ -875,12 +1154,13 @@ Item {
                         radius: root.s(10)
                         color: authorMa.containsMouse ? Qt.alpha(root.surface1, 0.6) : Qt.alpha(root.surface0, 0.4)
                         border.color: authorMa.containsMouse ? root.mauve : root.surface1
-                        border.width: 1
-                        scale: authorMa.pressed ? 0.98 : (authorMa.containsMouse ? 1.01 : 1.0)
+                        border.width: authorMa.containsMouse ? 2 : 1
+                        scale: authorMa.pressed ? 0.97 : (authorMa.containsMouse ? 1.02 : 1.0)
                         
-                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-                        Behavior on color { ColorAnimation { duration: 200 } }
-                        Behavior on border.color { ColorAnimation { duration: 200 } }
+                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on border.color { ColorAnimation { duration: 200 } }
+                                Behavior on border.width { NumberAnimation { duration: 200 } }
 
                         RowLayout {
                             anchors.verticalCenter: parent.verticalCenter
@@ -911,9 +1191,9 @@ Item {
                                         font.weight: Font.Black
                                         font.pixelSize: root.s(14)
                                         color: modelData.c
-                                        property real hoverOffset: authorMa.containsMouse ? root.s(-3) : 0
+                                        property real hoverOffset: authorMa.containsMouse ? root.s(-4) : 0
                                         transform: Translate { y: hoverOffset }
-                                        Behavior on hoverOffset { NumberAnimation { duration: 300 + (index * 35); easing.type: Easing.OutBack } } 
+                                        Behavior on hoverOffset { NumberAnimation { duration: 300 + (index * 40); easing.type: Easing.OutBack } } 
                                     }
                                 }
                             }
@@ -925,14 +1205,17 @@ Item {
                                 width: root.s(28)
                                 height: root.s(28)
                                 radius: root.s(6)
-                                color: authorMa.containsMouse ? root.surface1 : "transparent"
+                                color: authorMa.containsMouse ? Qt.alpha(root.mauve, 0.15) : "transparent"
+                                scale: authorMa.containsMouse ? 1.1 : 1.0
+                                Behavior on color { ColorAnimation { duration: 200 } }
+                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                                 Text { 
                                     anchors.centerIn: parent
                                     text: ""
                                     font.family: "Iosevka Nerd Font"
                                     font.pixelSize: root.s(14)
                                     color: authorMa.containsMouse ? root.mauve : root.subtext0
-                                    Behavior on color { ColorAnimation { duration: 150 } } 
+                                    Behavior on color { ColorAnimation { duration: 200 } } 
                                 } 
                             }
                         }
@@ -960,19 +1243,27 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: root.s(44)
                                 radius: root.s(8)
-                                color: navBtnMa.containsMouse ? Qt.alpha(root[modelData.color], 0.15) : Qt.alpha(root.surface0, 0.4)
-                                border.color: navBtnMa.containsMouse ? root[modelData.color] : root.surface1
-                                border.width: 1
-                                scale: navBtnMa.pressed ? 0.95 : 1.0
+                                property bool navHovered: false
+                                color: navHovered ? Qt.alpha(root.surface1, 0.5) : Qt.alpha(root.surface0, 0.4)
+                                border.color: navHovered ? root[modelData.color] : root.surface1
+                                border.width: navHovered ? 2 : 1
+                                scale: navBtnMa.pressed ? 0.95 : (navHovered ? 1.03 : 1.0)
                                 
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuart } }
+                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                                 Behavior on color { ColorAnimation { duration: 200 } }
                                 Behavior on border.color { ColorAnimation { duration: 200 } }
+                                Behavior on border.width { NumberAnimation { duration: 200 } }
                                 
                                 RowLayout { 
                                     anchors.centerIn: parent
                                     spacing: root.s(10)
-                                    Text { text: modelData.icon; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(16); color: root[modelData.color] } 
+                                    Text { 
+                                        text: modelData.icon
+                                        font.family: "Iosevka Nerd Font"
+                                        font.pixelSize: root.s(16)
+                                        color: navHovered ? root[modelData.color] : root.subtext0
+                                        Behavior on color { ColorAnimation { duration: 200 } }
+                                    }
                                     Text { text: modelData.name; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(13); color: root.text } 
                                 }
                                 
@@ -981,11 +1272,13 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    onEntered: parent.navHovered = true
+                                    onExited: parent.navHovered = false
                                     onClicked: {
                                         if (modelData.isToggle) {
                                             Quickshell.execDetached(["bash", Quickshell.env("HOME") + "/.config/hypr/scripts/qs_manager.sh", "toggle", "settings"]);
                                         } else {
-                                            root.currentTab = modelData.targetTab;
+                                            root.setTab(modelData.targetTab);
                                         }
                                     }
                                 }
@@ -1015,14 +1308,16 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: root.s(60)
                                 radius: root.s(10)
-                                color: sysCardMa.containsMouse ? Qt.alpha(root[model.clr], 0.1) : Qt.alpha(root.surface0, 0.4)
-                                border.color: sysCardMa.containsMouse ? root[model.clr] : root.surface1
-                                border.width: 1
-                                scale: sysCardMa.pressed ? 0.98 : 1.0
+                                property bool cardHovered: false
+                                color: cardHovered ? Qt.alpha(root.surface1, 0.5) : Qt.alpha(root.surface0, 0.4)
+                                border.color: cardHovered ? root[model.clr] : root.surface1
+                                border.width: cardHovered ? 2 : 1
+                                scale: sysCardMa.pressed ? 0.97 : (cardHovered ? 1.02 : 1.0)
                                 
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutQuart } }
+                                Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                                 Behavior on color { ColorAnimation { duration: 200 } }
                                 Behavior on border.color { ColorAnimation { duration: 200 } }
+                                Behavior on border.width { NumberAnimation { duration: 200 } }
                                 
                                 Item {
                                     anchors.fill: parent
@@ -1034,6 +1329,8 @@ Item {
                                         anchors.verticalCenter: parent.verticalCenter
                                         width: root.s(36)
                                         height: root.s(36)
+                                        scale: cardHovered ? 1.15 : 1.0
+                                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                                         Text { anchors.centerIn: parent; text: model.icon; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(22); color: root[model.clr] } 
                                     }
                                     
@@ -1053,12 +1350,55 @@ Item {
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
+                                    onEntered: parent.cardHovered = true
+                                    onExited: parent.cardHovered = false
                                     onClicked: Quickshell.execDetached(["xdg-open", model.link]) 
                                 }
                             }
                         }
                     }
                     Item { Layout.fillHeight: true }
+                }
+
+                // ─── COPYRIGHT ────────────────────────
+                Item {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: root.s(14)
+                    width: copyRow.width
+                    height: copyRow.height
+
+                    Row {
+                        id: copyRow
+                        spacing: root.s(1)
+                        Text {
+                            text: "© "
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: root.s(13)
+                            color: Qt.alpha(root.subtext0, 0.4)
+                        }
+                        Repeater {
+                            model: [ { l: "e", c: root.red }, { l: "p", c: root.peach }, { l: "r", c: root.yellow }, { l: "a", c: root.green }, { l: "h", c: root.sapphire }, { l: "e", c: root.blue }, { l: "m", c: root.mauve }, { l: "i", c: root.pink } ]
+                            Text {
+                                text: modelData.l
+                                font.family: "JetBrains Mono"
+                                font.weight: Font.Black
+                                font.pixelSize: root.s(13)
+                                color: modelData.c
+                                property real hoverOffset: copyMa.containsMouse ? root.s(-4) : 0
+                                transform: Translate { y: hoverOffset }
+                                Behavior on hoverOffset { NumberAnimation { duration: 300 + (index * 40); easing.type: Easing.OutBack } }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: copyMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/eprahemi"])
+                    }
                 }
             }
 
@@ -1067,13 +1407,15 @@ Item {
             // ------------------------------------------
             Item {
                 anchors.fill: parent
-                visible: root.currentTab === 2
-                opacity: visible ? 1.0 : 0.0
-                property real slideY: visible ? 0 : root.s(10)
+                opacity: root.currentTab === 2 ? 1.0 : 0.0
+                scale: root.currentTab === 2 ? 1.0 : 0.95
+                property real slideY: root.currentTab === 2 ? 0 : root.s(10)
+                enabled: root.currentTab === 2
                 
-                Behavior on slideY { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on slideY { NumberAnimation { duration: 300; easing.type: Easing.OutQuart } }
                 transform: Translate { y: slideY }
-                Behavior on opacity { NumberAnimation { duration: 250 } }
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -1148,12 +1490,54 @@ Item {
                         clip: true
                         
                         property string targetSource: modulesDataModel.get(root.selectedModuleIndex).preview ? Qt.resolvedUrl(modulesDataModel.get(root.selectedModuleIndex).preview) : ""
+                        property bool isVideoModule: modulesDataModel.get(root.selectedModuleIndex).target === "himeno"
+                        property bool videoActive: false
                         
-                        onTargetSourceChanged: { 
-                            baseImage.source = overlayImage.source; 
-                            overlayImage.opacity = 0.0; 
-                            overlayImage.source = targetSource; 
-                            fadeAnim.restart(); 
+                        onTargetSourceChanged: { refreshPreview(); }
+                        
+                        function refreshPreview() {
+                            if (isVideoModule) {
+                                baseImage.source = overlayImage.source;
+                                overlayImage.opacity = 0.0;
+                                overlayImage.source = Qt.resolvedUrl("previews/preview_himeno.png");
+                                fadeAnim.restart();
+                                videoPreview.source = targetSource;
+                                videoPreview.play();
+                            } else {
+                                videoPreview.stop();
+                                videoPreview.source = "";
+                                previewContainer.videoActive = false;
+                                videoPreview.opacity = 0;
+                                baseImage.opacity = 1;
+                                baseImage.source = overlayImage.source;
+                                overlayImage.opacity = 0.0;
+                                overlayImage.source = targetSource;
+                                fadeAnim.restart();
+                            }
+                        }
+
+                        ParallelAnimation {
+                            id: videoEnterAnim
+                            NumberAnimation { target: baseImage; property: "opacity"; to: 0; duration: 150; easing.type: Easing.OutQuad }
+                            NumberAnimation { target: overlayImage; property: "opacity"; to: 0; duration: 150; easing.type: Easing.OutQuad }
+                            NumberAnimation { target: videoPreview; property: "opacity"; to: 1; duration: 150; easing.type: Easing.OutQuad }
+                        }
+                        
+                        Video {
+                            id: videoPreview
+                            anchors.fill: parent
+                            fillMode: VideoOutput.PreserveAspectCrop
+                            visible: true
+                            opacity: 0
+                            autoPlay: true
+                            loops: MediaPlayer.Infinite
+                            z: 2
+                            onPlaying: {
+                                if (!previewContainer.videoActive) {
+                                    previewContainer.videoActive = true;
+                                    videoEnterAnim.restart();
+                                }
+                            }
                         }
                         
                         Image { 
@@ -1165,7 +1549,8 @@ Item {
                             horizontalAlignment: Image.AlignHCenter
                             smooth: true
                             mipmap: true
-                            asynchronous: true 
+                            asynchronous: true
+                            z: 0
                         }
                         
                         Image { 
@@ -1178,12 +1563,52 @@ Item {
                             smooth: true
                             mipmap: true
                             asynchronous: true
+                            z: 1
                             NumberAnimation on opacity { 
                                 id: fadeAnim
                                 to: 1.0
                                 duration: 350
                                 easing.type: Easing.InOutQuad 
                             } 
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            color: Qt.rgba(0, 0, 0, 0)
+                            visible: false
+
+                            Item {
+                                anchors.fill: parent
+                                visible: previewContainer.isVideoModule
+
+                                Rectangle {
+                                    anchors.bottom: parent.bottom
+                                    anchors.right: parent.right
+                                    anchors.margins: root.s(8)
+                                    width: root.s(28)
+                                    height: root.s(28)
+                                    radius: width / 2
+                                    color: vidBtnMa.containsMouse ? Qt.rgba(0, 0, 0, 0.7) : Qt.rgba(0, 0, 0, 0.5)
+                                    border.color: Qt.rgba(1, 1, 1, 0.2)
+                                    border.width: 1
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "♪"
+                                        color: "white"
+                                        font.pixelSize: root.s(14)
+                                    }
+
+                                    MouseArea {
+                                        id: vidBtnMa
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        hoverEnabled: true
+                                        onClicked: fullVideoProcess.running = true
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -1203,14 +1628,36 @@ Item {
                             height: root.s(90)
                             radius: root.s(12)
                             property bool isSelected: index === root.selectedModuleIndex
-                            color: isSelected ? root.surface1 : (modMa.containsMouse ? Qt.alpha(root.surface1, 0.5) : Qt.alpha(root.surface0, 0.4))
-                            border.color: isSelected ? root.ambientBlue : (modMa.containsMouse ? root.surface2 : root.surface1)
-                            border.width: isSelected ? 2 : 1
-                            scale: isSelected ? 1.0 : (modMa.pressed ? 0.96 : (modMa.containsMouse ? 1.02 : 1.0))
+                            property bool isHimeno: model.target === "himeno"
+                            color: isHimeno ? (isSelected ? Qt.rgba(0.8, 0.15, 0.15, 0.5) : (modMa.containsMouse ? Qt.rgba(0.8, 0.15, 0.15, 0.35) : Qt.rgba(0.8, 0.1, 0.1, 0.2))) : (isSelected ? root.surface1 : (modMa.containsMouse ? Qt.alpha(root.surface1, 0.5) : Qt.alpha(root.surface0, 0.4)))
+                            border.color: isHimeno ? (isSelected ? pulseColor : (modMa.containsMouse ? "#dd3333" : "#aa2222")) : (isSelected ? root.ambientBlue : (modMa.containsMouse ? root.surface2 : root.surface1))
+                            border.width: isSelected ? 2 : (isHimeno ? 2 : 1)
+                            scale: isSelected ? 1.0 : (modMa.pressed ? 0.96 : (modMa.containsMouse ? (isHimeno ? 1.06 : 1.02) : 1.0))
+                            
+                            property color pulseColor: "#ff4444"
+                            ColorAnimation on pulseColor {
+                                running: isHimeno && isSelected
+                                loops: Animation.Infinite
+                                duration: 1500
+                                from: "#ff4444"
+                                to: "#ff8888"
+                                easing.type: Easing.InOutSine
+                            }
                             
                             Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
                             Behavior on color { ColorAnimation { duration: 200 } }
                             Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: -root.s(6)
+                                radius: root.s(16)
+                                color: Qt.rgba(0.8, 0.1, 0.1, 0.15)
+                                visible: parent.isHimeno
+                                z: -1
+                                layer.enabled: true
+                                layer.effect: MultiEffect { blurEnabled: true; blurMax: 16; blur: 0.8 }
+                            }
                             
                             ColumnLayout {
                                 anchors.fill: parent
@@ -1223,25 +1670,39 @@ Item {
                                         width: root.s(28)
                                         height: root.s(28)
                                         radius: root.s(6)
-                                        color: Qt.alpha(root.base, 0.5)
-                                        Text { anchors.centerIn: parent; text: model.icon; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: isSelected ? root.ambientBlue : root.text } 
+                                        color: isHimeno ? Qt.rgba(0.8, 0.1, 0.1, 0.4) : Qt.alpha(root.base, 0.5)
+                                        Text { anchors.centerIn: parent; text: model.icon; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: isHimeno ? "#ff6666" : (isSelected ? root.ambientBlue : root.text) } 
                                     } 
                                     Text { 
                                         text: model.title
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Bold
                                         font.pixelSize: root.s(12)
-                                        color: root.text
+                                        color: isHimeno ? "#ff6666" : root.text
                                         Layout.fillWidth: true
                                         Layout.alignment: Qt.AlignVCenter
                                         elide: Text.ElideRight 
+                                    }
+                                    Text {
+                                        text: "❤"
+                                        font.pixelSize: root.s(10)
+                                        color: "#ff4444"
+                                        visible: parent.parent.parent.isHimeno
+                                        Layout.alignment: Qt.AlignVCenter
+                                        NumberAnimation on scale {
+                                            loops: Animation.Infinite
+                                            duration: 1000
+                                            from: 0.8
+                                            to: 1.2
+                                            easing.type: Easing.InOutSine
+                                        }
                                     } 
                                 }
                                 Text { 
                                     text: model.desc
                                     font.family: "JetBrains Mono"
                                     font.pixelSize: root.s(10)
-                                    color: root.subtext0
+                                    color: isHimeno ? Qt.rgba(1, 0.5, 0.5, 0.9) : root.subtext0
                                     Layout.alignment: Qt.AlignLeft
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
@@ -1274,13 +1735,15 @@ Item {
             // ------------------------------------------
             Item {
                 anchors.fill: parent
-                visible: root.currentTab === 3
-                opacity: visible ? 1.0 : 0.0
-                property real slideY: visible ? 0 : root.s(10)
+                opacity: root.currentTab === 3 ? 1.0 : 0.0
+                scale: root.currentTab === 3 ? 1.0 : 0.95
+                property real slideY: root.currentTab === 3 ? 0 : root.s(10)
+                enabled: root.currentTab === 3
                 
-                Behavior on slideY { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on slideY { NumberAnimation { duration: 300; easing.type: Easing.OutQuart } }
                 transform: Translate { y: slideY }
-                Behavior on opacity { NumberAnimation { duration: 250 } }
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -1322,7 +1785,7 @@ Item {
                                 MouseArea {
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: Qt.openUrlExternally("https://github.com/eprahemi/eprahemi-wallpapers")
+                                    onClicked: Qt.openUrlExternally("https://github.com/eprahemi/wiferice-wallpapers")
                                 }
                             }
                             
@@ -1504,17 +1967,250 @@ Item {
             }
 
             // ------------------------------------------
-            // TAB 4: ABOUT
+            // TAB 4: TIME SETTINGS
             // ------------------------------------------
             Item {
                 anchors.fill: parent
-                visible: root.currentTab === 4
-                opacity: visible ? 1.0 : 0.0
-                property real slideY: visible ? 0 : root.s(10)
-
-                Behavior on slideY { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+                opacity: root.currentTab === 4 ? 1.0 : 0.0
+                scale: root.currentTab === 4 ? 1.0 : 0.95
+                property real slideY: root.currentTab === 4 ? 0 : root.s(10)
+                enabled: root.currentTab === 4
+                
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on slideY { NumberAnimation { duration: 300; easing.type: Easing.OutQuart } }
                 transform: Translate { y: slideY }
-                Behavior on opacity { NumberAnimation { duration: 250 } }
+
+                Column {
+                    anchors.centerIn: parent
+                    width: parent.width - root.s(32)
+                    spacing: root.s(10)
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: root.s(48)
+                        height: root.s(48)
+                        radius: root.s(14)
+                        color: Qt.alpha(root.peach, 0.15)
+                        Text {
+                            anchors.centerIn: parent
+                            text: ""
+                            font.family: "Iosevka Nerd Font"
+                            font.pixelSize: root.s(26)
+                            color: root.peach
+                        }
+                    }
+
+                    Text {
+                        text: "Time Zone"
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        font.family: "JetBrains Mono"
+                        font.weight: Font.Black
+                        font.pixelSize: root.s(16)
+                        color: root.text
+                    }
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: Math.min(root.s(360), parent.width)
+                        height: root.s(50)
+                        radius: root.s(12)
+                        color: detectBtn.containsMouse ? Qt.alpha(root.peach, 0.2) : Qt.alpha(root.surface0, 0.4)
+                        border.color: detectBtn.containsMouse ? root.peach : root.surface1
+                        border.width: detectBtn.containsMouse ? 2 : 1
+                        scale: detectBtn.pressed ? 0.95 : (detectBtn.containsMouse ? 1.02 : 1.0)
+
+                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+                        Behavior on color { ColorAnimation { duration: 200 } }
+                        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                        RowLayout {
+                            anchors.centerIn: parent
+                            spacing: root.s(10)
+                            Text { text: "󰖟"; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(20); color: root.peach }
+                            Text { text: "Auto Detect Timezone"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(14); color: root.text }
+                            Rectangle {
+                                radius: root.s(5)
+                                color: Qt.alpha(root.green, 0.15)
+                                border.color: Qt.alpha(root.green, 0.4)
+                                border.width: 1
+                                implicitHeight: root.s(18)
+                                implicitWidth: recTxt.implicitWidth + root.s(8)
+                                Text {
+                                    id: recTxt
+                                    anchors.centerIn: parent
+                                    text: "Recommended"
+                                    font.family: "JetBrains Mono"
+                                    font.weight: Font.Black
+                                    font.pixelSize: root.s(8)
+                                    color: root.green
+                                }
+                            }
+
+                        }
+
+                        MouseArea {
+                            id: detectBtn
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Quickshell.execDetached(["kitty", "bash", "-c", "TZ=$(curl -s --max-time 5 https://ipapi.co/timezone 2>/dev/null || curl -s --max-time 5 http://ip-api.com/json 2>/dev/null | grep -oP '\\\"timezone\\\":\\\"\\K[^\\\"]+'); if [ -n \"$TZ\" ]; then echo \"Detected: $TZ\"; sudo timedatectl set-timezone \"$TZ\" && echo \"Timezone set to $TZ\"; else echo \"Could not detect timezone.\"; fi; echo; read -p 'Press Enter to close...' "])
+                        }
+                    }
+
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: Math.min(root.s(320), parent.width)
+                        height: 1
+                        color: Qt.alpha(root.surface1, 0.3)
+                    }
+
+                    Item {
+                        id: chipContainer
+                        width: parent.width
+                        height: root.s(280)
+                        opacity: 1.0
+
+                        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+                        Timer {
+                            id: continentFadeTimer
+                            interval: 150
+                            property int targetIndex: 0
+                            onTriggered: {
+                                root.selectedContinent = targetIndex;
+                                chipContainer.opacity = 1.0;
+                            }
+                        }
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: root.s(6)
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: root.s(3)
+
+                                Repeater {
+                                    model: root.continentData
+
+                                    Rectangle {
+                                        id: pill
+                                        property var cont: modelData
+                                        property bool isActive: index === root.selectedContinent
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: root.s(26)
+                                        radius: root.s(6)
+                                        color: isActive ? Qt.alpha(cont.color, 0.25) : Qt.alpha(root.surface0, 0.2)
+                                        border.color: isActive ? cont.color : "transparent"
+                                        border.width: isActive ? 1 : 0
+                                        scale: pillMa.pressed ? 0.95 : 1.0
+
+                                        Behavior on color { ColorAnimation { duration: 200 } }
+                                        Behavior on border.color { ColorAnimation { duration: 200 } }
+
+                                        RowLayout {
+                                            anchors.centerIn: parent
+                                            spacing: root.s(3)
+                                            Text {
+                                                text: cont.icon
+                                                font.family: "Iosevka Nerd Font"
+                                                font.pixelSize: root.s(11)
+                                                color: isActive ? cont.color : root.subtext0
+                                            }
+                                            Text {
+                                                text: cont.region
+                                                font.family: "JetBrains Mono"
+                                                font.weight: Font.Bold
+                                                font.pixelSize: root.s(11)
+                                                color: isActive ? cont.color : root.subtext0
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            id: pillMa
+                                            anchors.fill: parent
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: {
+    if (index !== root.selectedContinent) {
+        chipContainer.opacity = 0.0;
+        continentFadeTimer.targetIndex = index;
+        continentFadeTimer.restart();
+    }
+}
+                                        }
+                                    }
+                                }
+                            }
+
+                            Flickable {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                contentHeight: zoneFlow.height
+                                clip: true
+                                boundsBehavior: Flickable.StopAtBounds
+
+                                Flow {
+                                    id: zoneFlow
+                                    width: parent.width
+                                    spacing: root.s(6)
+
+                                    Repeater {
+                                        model: root.continentData[root.selectedContinent].zones
+
+                                        Rectangle {
+                                            height: root.s(30)
+                                            width: txt.implicitWidth + root.s(16)
+                                            radius: root.s(5)
+                                            property bool zoneHovered: false
+                                            color: zoneHovered ? Qt.alpha(root.continentData[root.selectedContinent].color, 0.2) : Qt.alpha(root.surface0, 0.25)
+                                            border.color: zoneHovered ? root.continentData[root.selectedContinent].color : "transparent"
+                                            border.width: zoneHovered ? 1 : 0
+                                            scale: zoneMa.pressed ? 0.95 : (zoneHovered ? 1.02 : 1.0)
+
+                                            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                            Behavior on color { ColorAnimation { duration: 120 } }
+
+                                            Text {
+                                                id: txt
+                                                anchors.centerIn: parent
+                                                text: modelData.disp
+                                                font.family: "JetBrains Mono"
+                                                font.pixelSize: root.s(12)
+                                                color: parent.zoneHovered ? root.continentData[root.selectedContinent].color : root.subtext0
+                                            }
+                                            MouseArea {
+                                                id: zoneMa
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onEntered: parent.zoneHovered = true
+                                                onExited: parent.zoneHovered = false
+                                                onClicked: Quickshell.execDetached(["kitty", "bash", "-c", "TZ=\"" + modelData.zone + "\"; sudo timedatectl set-timezone \"$TZ\" && echo \"Timezone set to $TZ\"; read -p 'Press Enter to close...' "])
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ------------------------------------------
+            // TAB 5: ABOUT
+            // ------------------------------------------
+            Item {
+                anchors.fill: parent
+                opacity: root.currentTab === 5 ? 1.0 : 0.0
+                scale: root.currentTab === 5 ? 1.0 : 0.95
+                property real slideY: root.currentTab === 5 ? 0 : root.s(10)
+                enabled: root.currentTab === 5
+                
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on slideY { NumberAnimation { duration: 300; easing.type: Easing.OutQuart } }
+                transform: Translate { y: slideY }
 
                 ColumnLayout {
                     anchors.centerIn: parent
@@ -1529,7 +2225,7 @@ Item {
                             model: [
                                 { name: "GitHub", icon: "", color: "blue", url: "https://github.com/eprahemi" },
                                 { name: "Eprahemi", icon: "󰣇", color: "mauve", url: "https://github.com/eprahemi/WifeRice" },
-                                { name: "Wallpapers", icon: "", color: "peach", url: "https://github.com/eprahemi/eprahemi-wallpapers" }
+                                { name: "Wallpapers", icon: "", color: "peach", url: "https://github.com/eprahemi/wiferice-wallpapers" }
                             ]
 
                             Rectangle {
@@ -1608,7 +2304,7 @@ Item {
                         }
 
                         Text {
-                            text: root.dotsVersion !== "Loading..." ? root.dotsVersion : "..."
+                            text: root.dotsVersion !== "Loading..." ? root.dotsVersion + (root.dotsVersionName !== "" ? " " + root.dotsVersionName : "") : "..."
                             font.family: "JetBrains Mono"
                             font.weight: Font.Bold
                             font.pixelSize: root.s(12)
@@ -1630,20 +2326,64 @@ Item {
                         }
                     }
                 }
+
+                // ─── COPYRIGHT ────────────────────────
+                // ─── COPYRIGHT ────────────────────────
+                Item {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: root.s(14)
+                    width: copyRow2.width
+                    height: copyRow2.height
+
+                    Row {
+                        id: copyRow2
+                        spacing: root.s(1)
+                        Text {
+                            text: "© "
+                            font.family: "JetBrains Mono"
+                            font.pixelSize: root.s(13)
+                            color: Qt.alpha(root.subtext0, 0.4)
+                        }
+                        Repeater {
+                            model: [ { l: "e", c: root.red }, { l: "p", c: root.peach }, { l: "r", c: root.yellow }, { l: "a", c: root.green }, { l: "h", c: root.sapphire }, { l: "e", c: root.blue }, { l: "m", c: root.mauve }, { l: "i", c: root.pink } ]
+                            Text {
+                                text: modelData.l
+                                font.family: "JetBrains Mono"
+                                font.weight: Font.Black
+                                font.pixelSize: root.s(13)
+                                color: modelData.c
+                                property real hoverOffset: copyMa2.containsMouse ? root.s(-4) : 0
+                                transform: Translate { y: hoverOffset }
+                                Behavior on hoverOffset { NumberAnimation { duration: 300 + (index * 40); easing.type: Easing.OutBack } }
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: copyMa2
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/eprahemi"])
+                    }
+                }
             }
 
             // ------------------------------------------
-            // TAB 5: UPDATES & CHANGELOG
+            // TAB 6: UPDATES & CHANGELOG
             // ------------------------------------------
             Item {
                 anchors.fill: parent
-                visible: root.currentTab === 5
-                opacity: visible ? 1.0 : 0.0
-                property real slideY: visible ? 0 : root.s(10)
-
-                Behavior on slideY { NumberAnimation { duration: 250; easing.type: Easing.OutQuart } }
+                opacity: root.currentTab === 6 ? 1.0 : 0.0
+                scale: root.currentTab === 6 ? 1.0 : 0.95
+                property real slideY: root.currentTab === 6 ? 0 : root.s(10)
+                enabled: root.currentTab === 6
+                
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
+                Behavior on slideY { NumberAnimation { duration: 300; easing.type: Easing.OutQuart } }
                 transform: Translate { y: slideY }
-                Behavior on opacity { NumberAnimation { duration: 250 } }
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -1776,7 +2516,7 @@ Item {
                             }
 
                             Text {
-                                text: root.dotsVersion !== "Loading..." ? root.dotsVersion : "..."
+                                text: root.dotsVersion !== "Loading..." ? root.dotsVersion + (root.dotsVersionName !== "" ? " " + root.dotsVersionName : "") : "..."
                                 font.family: "JetBrains Mono"
                                 font.weight: Font.Bold
                                 font.pixelSize: root.s(12)
@@ -1789,6 +2529,52 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
+                        }
+                    }
+
+                    // ─── UPDATE STATUS ────────────────────────────────
+                    Item {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: updateStatusRow.implicitWidth
+                        implicitHeight: updateStatusRow.implicitHeight
+                        visible: root.updateStatusText !== "Click CHECK"
+                        scale: 1.0
+                        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+
+                        RowLayout {
+                            id: updateStatusRow
+                            anchors.centerIn: parent
+                            spacing: root.s(6)
+
+                            Text {
+                                text: root.updateStatusIcon
+                                font.family: "Iosevka Nerd Font"
+                                font.pixelSize: root.s(14)
+                                color: root.updateStatusColor
+                            }
+
+                            Text {
+                                text: root.updateStatusText
+                                font.family: "JetBrains Mono"
+                                font.weight: Font.Bold
+                                font.pixelSize: root.s(13)
+                                color: root.updateStatusColor
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: root.updateStatusText.includes("available") ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            hoverEnabled: true
+                            onEntered: if (root.updateStatusText.includes("available")) parent.scale = 1.08
+                            onExited: parent.scale = 1.0
+                            onClicked: {
+                                if (root.updateStatusText.includes("available")) {
+                                    let url = "https://raw.githubusercontent.com/eprahemi/WifeRice/master/install.sh";
+                                    let cmd = "if command -v kitty >/dev/null 2>&1; then kitty --hold bash -c \"$(curl -fsSL " + url + ")\"; else bash -c \"$(curl -fsSL " + url + ")\"; fi";
+                                    Quickshell.execDetached(["bash", "-c", cmd]);
+                                }
+                            }
                         }
                     }
 
@@ -1818,13 +2604,26 @@ Item {
                         spacing: root.s(6)
 
                         model: ListModel {
-                            ListElement { version: "v2.1.0"; title: "Stewart AI (Reserved)"; desc: "Voice assistant integration placeholder"; icon: "󰚩"; clr: "mauve"; detail: "Voice-first interaction layer for controlling modules and workspace layout. Reserved for future development with plugin-based skill expansion." }
-                            ListElement { version: "v2.0.5"; title: "Ambient Orbs Enhanced"; desc: "3 dynamic orbs with smooth color blending"; icon: "󱓞"; clr: "peach"; detail: "Three dynamic gradient orbs with trigonometric motion paths and theme-aware color blending between accent pairs." }
-                            ListElement { version: "v2.0.4"; title: "Network Hub Rewrite"; desc: "Wi-Fi & Bluetooth via nmcli and bluez"; icon: "󰤨"; clr: "blue"; detail: "Unified Wi-Fi and Bluetooth management using nmcli and BlueZ backends with connection quality monitoring." }
-                            ListElement { version: "v2.0.3"; title: "FocusTime Daemon"; desc: "Pomodoro timer with session tracking"; icon: "󰄉"; clr: "pink"; detail: "Pomodoro timer with configurable intervals, session progress tracking, and desktop notifications for deep work." }
-                            ListElement { version: "v2.0.2"; title: "Battery Health"; desc: "Uptime, power profiles, health metrics"; icon: "󰁹"; clr: "yellow"; detail: "Real-time charge status, power consumption metrics, cycle tracking, and visual health indicators." }
-                            ListElement { version: "v2.0.1"; title: "Media Overhaul"; desc: "Cava visualizer & live lyrics"; icon: "󰎆"; clr: "green"; detail: "Cava audio visualizer with real-time frequency analysis and synchronized lyrics display via OSD." }
-                            ListElement { version: "v2.0.0"; title: "Imperative Release"; desc: "Full QML rewrite, 8 modules, Matugen"; icon: "󰣆"; clr: "mauve"; detail: "Foundational QML rewrite with eight interactive modules, Matugen theming, and animated guide popup." }
+                            ListElement { version: "v1.7.6"; title: "Security Patch Batch"; desc: "Patched privilege escalation in IPC sockets, hardened env sanitization, fixed unsafe temp file creation, removed deprecated sudoers fallback, batched dbus security hardening"; icon: "󰒃"; clr: "red"; detail: "Security Patch Batch. Patched privilege escalation vector in QS IPC socket permissions. Hardened shell environment variable sanitization across all scripts. Fixed unsafe temporary file creation (CWE-377) in installer routines. Removed deprecated sudoers fallback that bypassed authentication checks. Batched security hardening for dbus activation policies. Mitigated XDG autostart injection path. Strengthened filesystem permission isolation for runtime directories. Fixed black screen on update by removing systemd-logind restart during install. Power button tap now locks screen, long press shuts down." }
+                            ListElement { version: "v1.7.5"; title: "Battery Alerts, Auth Fixes, Volume Control"; desc: "4-stage battery alerts with per-level sounds, PAM fix, power button suspend, 4% volume step with hold-repeat"; icon: "󰁹"; clr: "red"; detail: "v1.7.5 release. New 4-stage low battery alert system: 20% lowbattery20-10.mp3 + normal notification, 10% same sound + critical notification, 5% lowbattery5.mp3 + critical notification, 3% 30s countdown with color-changing urgency every 10s + lowbattery5.mp3 every 3s. Countdown stops if charger plugged in — suspends at 0 if still discharging. Per-threshold sound support. Fixed false wrong-password errors (disabled pam_systemd_home.so). Power button tap = suspend, long press = poweroff. New volume script with 4% step and hold-repeat support." }
+                            ListElement { version: "v1.5.7"; title: "NVIDIA Optimus Fix & Proton VPN"; desc: "Fixed dGPU always-on overheating, added Proton VPN installer, system-wide smoothness"; icon: "󰢮"; clr: "blue"; detail: "v1.5.7 release. CRITICAL NVIDIA Optimus fix: removed global __NV_PRIME_RENDER_OFFLOAD from env.conf that kept the dGPU always active — now the Intel iGPU handles desktop, Discord, and browsers by default, while the NVIDIA RTX GPU only activates on demand via prime-run for gaming. This fixes overheating, battery drain, and system lag on all Optimus laptops (MSI Thin, etc.). Added Proton VPN CLI and GTK app to the installer. Discord hardware acceleration should be disabled in Discord Settings > Advanced for best performance." }
+                            ListElement { version: "v1.5.6"; title: "Timezone Picker & Fade Transitions"; desc: "Continent pills, country chips, auto-detect with badge, fade morphing"; icon: ""; clr: "peach"; detail: "v1.5.6 release. New Timezone tab with interactive continent pills and alphabetically-sorted country chips. Auto-detect timezone button with green Recommended badge. Smooth fade transitions when switching continents. Left/right arrow keyboard navigation for continent cycling. Fixed brace balance issue that broke the guide popup. Increased font sizes for readability. Vertically centered layout. Icon and button sizes improved. Added recommended badge to auto-detect button. Full morph animation on continent switch." }
+                            ListElement { version: "v1.5.4"; title: "Emergency Fix Release"; desc: "Timezone removed, Thunar optional, audio/thumbnail/NVIDIA fixes"; icon: "󰑖"; clr: "red"; detail: "Emergency v1.5.4 release. Removed timezone geo-location API checker that could change system time based on VPN location. Removed forced Thunar install — file manager keybinding now uses xdg-open. Fixed audio driver being broken after update by ensuring pipewire/wireplumber user services are enabled. Fixed thumbnails not showing by enabling tumblerd user service post-install. Fixed NVIDIA Optimus laptop overheating and 0% battery by configuring nvidia.NVreg_DynamicPowerManagement=0x02, enabling nvidia-suspend/hibernate/resume services, and installing nvidia-prime for PRIME render offload. Preserved user lock screen/login screen/face icon customizations — never overwrites existing wallpapers, SDDM theme QML files, or profile pictures." }
+                            ListElement { version: "v1.5.3"; title: "Stable Release"; desc: "Finalized notifications, icon fixes, video cleanup"; icon: "󰂚"; clr: "green"; detail: "Stable v1.5.3 release. All notification features finalized: glassmorphism popups, smart keyword-mapped icons, smooth height-collapse transitions, battery icon fix for notify-send, Himeno video stops on guide close/focus loss, and full changelog history." }
+                            ListElement { version: "v1.5.1"; title: "Premium Notifications"; desc: "Glassmorphism, icons, smooth transitions"; icon: "󰂚"; clr: "mauve"; detail: "Complete notification popup redesign: glassmorphism cards with animated ambient orbs, smart keyword-mapped nerd font icons for every app type, left accent bar with glow intensity, smooth height-collapse remove transitions with no glitching, hover-reveal dismiss button, auto-dismiss countdown progress bar, and refined add/remove animations with spring easing." }
+                            ListElement { version: "v1.5.0"; title: "Himeno Edition Release"; desc: "Stable release — video, animations, polish"; icon: "󰎁"; clr: "red"; detail: "Official v1.5.0 Himeno Edition release. All features finalized: Himeno Sexy Scene module with video playback, liquid morphing tab transitions, pulsing red card styling with heart indicator, white tint hover effects across all interactive elements, sidebar tab hover scale, fixes for hover state persistence on click, and full changelog history." }
+                            ListElement { version: "v1.4.9"; title: "Himeno Edition"; desc: "Himeno video, red styling, liquid morphing"; icon: "󰎁"; clr: "red"; detail: "New Himeno Sexy Scene module with inline video playback via QtMultimedia. Red-themed card styling with pulsing border, heart icon, and outer glow. Full liquid morphing animations on all tabs (scale + opacity + slide). Smooth hover transitions on all interactive elements. Settings/Modules nav buttons and system cards now have white tint hover + border glow. Sidebar tabs scale up on hover with OutBack easing." }
+                            ListElement { version: "v1.4.8"; title: "Settings Slide Fix"; desc: "150ms delay, smoother slide, weather auto-refresh"; icon: "󰑐"; clr: "blue"; detail: "Top bar elements now wait 150ms before sliding when settings opens — no more empty gap before popup appears. Weather refreshes instantly after saving API key/city. Reduced slide distance to 70% for perfect fit." }
+                            ListElement { version: "v1.4.7"; title: "Preview Initialization"; desc: "Fixed preview not showing on first load"; icon: "󰋼"; clr: "mauve"; detail: "Fixed GuidePopup preview container not initializing on first open. onTargetSourceChanged now calls refreshPreview() function. Component.onCompleted triggers initial preview setup. Brace balance verified at 504/504." }
+                            ListElement { version: "v1.4.6"; title: "Clickable Update Status"; desc: "Hover & click to update, smoother animations"; icon: "󰚰"; clr: "peach"; detail: "Update status text is now clickable — hover for smooth scale animation, click to open terminal and run the installer. Bottom 'update' button also improved with hover effects and redirects to terminal." }
+                            ListElement { version: "v1.4.5"; title: "Rebrand to WifeRice"; desc: "Capital R, cleaner identity, all URLs updated"; icon: "󰜥"; clr: "mauve"; detail: "GitHub repo renamed to eprahemi/WifeRice with capital R. All references updated across guide, updater, installer, and README." }
+                            ListElement { version: "v1.4.4"; title: "GuidePopup Overhaul"; desc: "Updates tab, makima icon, keyboard nav, glow arc"; icon: "󰅟"; clr: "mauve"; detail: "New Updates tab with version checker and changelog. Makima icon in About tab. Keyboard navigation with up/down arrows to switch tabs. Rotating glow border around avatar. Hover scale effects on version row. Clickable wallpaper link. Arch logo in System tab." }
+                            ListElement { version: "v1.4.3"; title: "WiFi & Volume Refined"; desc: "Fixed WiFi/BT popup, refined volume orb"; icon: "󰕾"; clr: "blue"; detail: "Fixed WiFi and Bluetooth popup display issues. Refined volume orb with smoother drag interaction and instant mute text feedback." }
+                            ListElement { version: "v1.4.2"; title: "Hero Orb Volume Fixes"; desc: "Smooth drag, no glitch, instant mute text"; icon: "󰓃"; clr: "peach"; detail: "Replaced Behavior on transform with animated property for volume orb. Removed visible binding glitch. Instant mute/unmute text display on tap." }
+                            ListElement { version: "v1.4.1"; title: "Cleanup & Rebase"; desc: "Single default wallpaper, branding update"; icon: "󰛖"; clr: "green"; detail: "Cleaned up wallpaper handling to use a single default wallpaper. Rebranded to Eprahemi with professional ASCII art banner in installer." }
+                            ListElement { version: "v1.4.0"; title: "WiFi Password Counter"; desc: "Character counter, smoother orb drag"; icon: "󰤨"; clr: "yellow"; detail: "Added WiFi password character counter in corner of input field. Smoother orb drag sensitivity across all modules." }
+                            ListElement { version: "v1.3.9"; title: "Hero Orb Drag Control"; desc: "Drag up/down for volume, tap to mute"; icon: "󰝝"; clr: "pink"; detail: "Volume control via Hero Orb — drag up/down to adjust volume, tap to toggle mute. Haptic-style visual feedback on interaction." }
+                            ListElement { version: "v1.3.8"; title: "Low Battery Warnings"; desc: "Alerts at 20%, 10%, 5%"; icon: "󰁹"; clr: "red"; detail: "Added low battery warning notifications at 20%, 10%, and 5% thresholds with distinct visual urgency levels." }
                         }
 
                         delegate: Rectangle {
@@ -1903,9 +2702,13 @@ Item {
                                 Layout.preferredHeight: root.s(26)
                                 Layout.preferredWidth: cmdText.implicitWidth + root.s(16)
                                 radius: root.s(4)
-                                color: root.base
-                                border.color: root.surface2
+                                color: updateBtnMa.containsMouse ? Qt.alpha(root.green, 0.15) : root.base
+                                border.color: updateBtnMa.containsMouse ? Qt.alpha(root.green, 0.4) : root.surface2
                                 border.width: 1
+                                scale: updateBtnMa.containsMouse ? 1.05 : 1.0
+                                Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutBack } }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Behavior on border.color { ColorAnimation { duration: 150 } }
 
                                 Text {
                                     id: cmdText
@@ -1918,10 +2721,15 @@ Item {
                                 }
 
                                 MouseArea {
+                                    id: updateBtnMa
                                     anchors.fill: parent
                                     cursorShape: Qt.PointingHandCursor
                                     hoverEnabled: true
-                                    onClicked: Quickshell.execDetached(["bash", "-c", "update"])
+                                    onClicked: {
+                                        let url = "https://raw.githubusercontent.com/eprahemi/WifeRice/master/install.sh";
+                                        let cmd = "if command -v kitty >/dev/null 2>&1; then kitty --hold bash -c \"$(curl -fsSL " + url + ")\"; else bash -c \"$(curl -fsSL " + url + ")\"; fi";
+                                        Quickshell.execDetached(["bash", "-c", cmd]);
+                                    }
                                 }
                             }
 
@@ -1932,7 +2740,8 @@ Item {
                                 Layout.preferredHeight: root.s(28)
                                 radius: root.s(6)
                                 color: cpMa.containsMouse ? root.surface1 : "transparent"
-                                Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: cpMa.containsMouse ? root.mauve : root.subtext0 }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: cpMa.containsMouse ? root.mauve : root.subtext0; Behavior on color { ColorAnimation { duration: 150 } } }
                                 MouseArea {
                                     id: cpMa
                                     anchors.fill: parent
@@ -1947,7 +2756,8 @@ Item {
                                 Layout.preferredHeight: root.s(28)
                                 radius: root.s(6)
                                 color: docMa.containsMouse ? root.surface1 : "transparent"
-                                Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: docMa.containsMouse ? root.green : root.subtext0 }
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                                Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: docMa.containsMouse ? root.green : root.subtext0; Behavior on color { ColorAnimation { duration: 150 } } }
                                 MouseArea {
                                     id: docMa
                                     anchors.fill: parent
@@ -1960,6 +2770,7 @@ Item {
                     }
                 }
             }
+
         }
     }
 }
