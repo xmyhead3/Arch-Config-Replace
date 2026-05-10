@@ -1,3 +1,328 @@
 {
-  "videos": []
+  "latest_version": "1.4.3",
+  "videos": [],
+  "changelog": [
+    {
+      "version": "1.4.3",
+      "changes": [
+        "FIXED: WiFi/Bluetooth popup not opening — removed faulty character counter",
+        "FIXED: Hero Orb volume — smooth drag, no glitching, instant mute text",
+        "FIXED: Orb volume sensitivity and muting issues"
+      ]
+    },
+    {
+      "version": "1.4.2",
+      "changes": [
+        "FIXED: Hero Orb volume control — smooth drag, no glitching, instant mute text"
+      ]
+    },
+    {
+      "version": "1.4.1",
+      "changes": [
+        "FIXED: Repo cleaned — only 1 default wallpaper, no duplicate images"
+      ]
+    },
+    {
+      "version": "1.4.0",
+      "changes": [
+        "ADDED: WiFi password field shows character counter in corner",
+        "FIXED: Hero Orb volume drag sensitivity reduced for smoother control"
+      ]
+    },
+    {
+      "version": "1.3.9",
+      "changes": [
+        "ADDED: Hero Orb volume control — drag up/down to adjust volume, tap to mute"
+      ]
+    },
+    {
+      "version": "1.3.8",
+      "changes": [
+        "ADDED: Low battery warnings at 20%, 10%, and 5% with critical notifications"
+      ]
+    },
+    {
+      "version": "1.3.7",
+      "changes": [
+        "REBRAND: Project renamed to Eprahemi — new ASCII art banner everywhere",
+        "REBRAND: All display names updated from WaveRice to Eprahemi",
+        "FIXED: SDDM login wallpaper no longer overwritten on update",
+        "UPDATE: All 9 Module preview images replaced with new screenshots"
+      ]
+    },
+    {
+      "version": "1.3.6",
+      "changes": [
+        "ADDED: Bluetooth support (bluez, bluez-utils) enabled and running",
+        "ADDED: Print support (cups, cups-pdf, system-config-printer, sane-airscan) enabled",
+        "ADDED: Common drivers (NetworkManager, iwd, firmware, mesa-utils, vulkan-tools)",
+        "FIXED: Wallpaper picker no longer slow on first open after reboot",
+        "FIXED: Thumbnail cache no longer wiped on every install — only on first install",
+        "ADDED: Thumbnails pre-generated during install for all local wallpapers",
+        "ADDED: Color markers pre-extracted during install (no lazy delay)"
+      ]
+    },
+    {
+      "version": "1.3.5",
+      "changes": [
+        "FIXED: Face icon no longer overwritten on update — only set default if user has none",
+        "FIXED: Wallpapers no longer overwritten on update — only copy defaults on first install",
+        "FIXED: SDDM wallpaper only copied if user's Wallpapers folder is empty",
+        "FIXED: Weather .env API key never touched by installer (already safe)",
+        "FIXED: Wallpaper path uses actual device username (always dynamic)"
+      ]
+    },
+    {
+      "version": "1.3.3",
+      "changes": [
+        "FIXED: Avatar now truly circular — clip:true clips to bounding box not rounded shape. Using OpacityMask from QtGraphicalEffects instead"
+      ]
+    },
+    {
+      "version": "1.3.2",
+      "changes": [
+        "FIXED: Wallpaper now uses real FastBlur (QtGraphicalEffects) instead of pixelation",
+        "FIXED: Avatar now circular — added implicitWidth/Height so layout allocates 150x150",
+        "FIXED: Added qt5-graphicaleffects to installer (required for FastBlur on Qt5 SDDM)"
+      ]
+    },
+    {
+      "version": "1.3.1",
+      "changes": [
+        "FIXED: Black TTY on boot — SDDM not installed at all! sddm-qt6 AUR package doesn't exist, yay -S failed silently",
+        "FIXED: Install official SDDM from pacman (always works) instead of broken sddm-qt6 AUR",
+        "FIXED: Main.qml now works on both Qt5 and Qt6 SDDM (no QtQuick.Effects dependency)",
+        "FIXED: Avatar uses clip+radius instead of MultiEffect mask (works on Qt5)",
+        "FIXED: Background uses pixelation blur instead of MultiEffect (works on Qt5)",
+        "FIXED: All imports versioned (QtQuick 2.15, Controls 2.15, Layouts 1.0)",
+        "FIXED: Added qmldir for Colors.qml singleton reliability",
+        "FIXED: Colors.qml uses versioned QtQuick import"
+      ]
+    },
+    {
+      "version": "1.2.9",
+      "changes": [
+        "ADDED: Qt6 packages auto-installed (qt6-base, qt6-declarative, qt6-quickcontrols2, qt6-quicklayouts, qt6-svg, qt6-shadertools, qt6-wayland)",
+        "ADDED: SDDM-Qt6 replaces Qt5 SDDM automatically (required for QtQuick.Effects support)",
+        "ADDED: Quickshell Q6 auto-installed (UI framework for all panels and widgets)",
+        "ADDED: Default Colors.qml for SDDM theme (Catppuccin Mocha, works before Matugen runs)",
+        "FIXED: SDDM Main.qml replaced with fully working version (Qt6-native, MultiEffect blur, circular avatar)"
+      ]
+    },
+    {
+      "version": "1.2.8",
+      "changes": [
+        "FIXED: SDDM Main.qml renamed lowercase -> capital M (SDDM requirement)",
+        "FIXED: Imports now work on both Qt5 and Qt6 SDDM (QtQuick 2.15, Controls 2.15, Layouts 1.0)",
+        "FIXED: Background blur via pixelation (no MultiEffect/FastBlur dependency)",
+        "FIXED: Avatar now circular (Layout.preferredWidth/Height, not width/height)",
+        "FIXED: No external Colors.qml dependency (colors embedded in Main.qml)",
+        "FIXED: metadata.desktop updated with proper SDDM theme fields"
+      ]
+    },
+    {
+      "version": "1.2.7",
+      "changes": [
+        "FIXED: SDDM login theme now works on all devices (removed QtQuick.Effects/MultiEffect dependency, embedded Catppuccin Mocha colors directly, compatible with Qt5 SDDM)",
+        "FIXED: Guide popup Check for Updates button removed (was spinning with no text), only version display and terminal hint remain"
+      ]
+    },
+    {
+      "version": "1.2.6",
+      "changes": [
+        "CHANGED: All keybinds replaced with WaveRice defaults (Super+T=terminal, Super+G=Chrome, Super+E=Thunar, Super+F=Spotify, Super+A=Discord, Super+K=Steam, Super+J=Edge, Alt+V=Code, etc.)",
+        "ADDED: Thunar file manager, Steam, Microsoft Edge to installer packages",
+        "FIXED: Keybinds template is now the source of truth (settings.json keybinds cleared)"
+      ]
+    },
+    {
+      "version": "1.2.5",
+      "changes": [
+        "FIXED: Guide About section layout completely restructured — cards, version, check button, and tip stacked vertically with proper spacing",
+        "FIXED: Update check timeout reduced to 3 seconds (was 5)",
+        "FIXED: Check for Updates button now properly centered in a ColumnLayout (was broken Layout properties)",
+        "IMPROVED: Version display added above check button",
+        "IMPROVED: Divider separates cards from update section",
+        "IMPROVED: Spinning animation speed increased (800ms per loop)"
+      ]
+    },
+    {
+      "version": "1.2.4",
+      "changes": [
+        "FIXED: SDDM theme main.qml now has QML version numbers (fixes 'Library import requires a version' error)"
+      ]
+    },
+    {
+      "version": "1.2.3",
+      "changes": [
+        "IMPROVED: Installer now skips already-installed apps silently (no 'already installed' messages)"
+      ]
+    },
+    {
+      "version": "1.2.2",
+      "changes": [
+        "ADDED: F8 keybind for microphone mute (works on HP laptops and any laptop with mic mute button)",
+        "ADDED: sof-firmware and alsa-firmware packages for laptop audio support"
+      ]
+    },
+    {
+      "version": "1.2.1",
+      "changes": [
+        "ADDED: 'update' terminal command — type 'update' to check for new version and install",
+        "ADDED: Terminal hint in Guide About section below Check for Updates button"
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "changes": [
+        "ADDED: Check for Updates button in Guide (Super+H) → About section",
+        "ADDED: Button shows 'You have the best updated version!' when up-to-date",
+        "ADDED: Button shows 'Update Available vX.X.X' and triggers one-liner install when clicked"
+      ]
+    },
+    {
+      "version": "1.1.9",
+      "changes": [
+        "CHANGED: Repo renamed to WaveRice (was Arch-Config-Replace)",
+        "CHANGED: All URLs, version files, and references updated to WaveRice",
+        "CHANGED: Installer header and messages updated"
+      ]
+    },
+    {
+      "version": "1.1.8",
+      "changes": [
+        "ADDED: SDDM theme matugen-minimal with liquid wave animation on password input",
+        "ADDED: SDDM theme auto-installs to /usr/share/sddm/themes/ and configures /etc/sddm.conf.d/",
+        "ADDED: Iosevka Nerd Font to package list (needed by SDDM theme icons)",
+        "FIXED: Keybindings now unbind old conflicting keys (Ctrl+Enter, Super+T, etc.) before setting new ones",
+        "FIXED: Old keybinds from previous configs no longer persist"
+      ]
+    },
+    {
+      "version": "1.1.7",
+      "changes": [
+        "FIXED: Restored /usr/share/wallpapers/lock.png copy with sudo (fixes Permission denied)",
+        "FIXED: Only copies lock.png if it doesn't exist (no error on re-install)",
+        "FIXED: restore.sh also copies lock.png with sudo guard"
+      ]
+    },
+    {
+      "version": "1.1.6",
+      "changes": [
+        "FIXED: Removed /usr/share/wallpapers copy from install.sh (was causing Permission denied error)",
+        "FIXED: Removed lock screen wallpaper copy — user only asked to replace lock.png in Wallpapers/ folder",
+        "FIXED: Restore.sh no longer copies to /usr/share/wallpapers/lock.png"
+      ]
+    },
+    {
+      "version": "1.1.5",
+      "changes": [
+        "FIXED: Removed ALL hardcoded /home/eprahemi/ paths — now works for any username",
+        "FIXED: settings.json wallpaperDir was hardcoded to eprahemi, now empty (QML falls back to $HOME/Pictures/Wallpapers)",
+        "FIXED: env.conf.template shader cache path now uses {{SHADER_CACHE}} placeholder",
+        "FIXED: settings_watcher.sh now substitutes {{SHADER_CACHE}} with $HOME/.cache/nvidia",
+        "FIXED: .zshrc had hardcoded PATH to /home/eprahemi/.opencode/bin, now uses $HOME",
+        "FIXED: install.sh now runs settings_watcher.sh --compile to regenerate configs for current user",
+        "ADDED: jq and inotify-tools to package list (needed by settings_watcher)",
+        "IMPROVED: All configs auto-regenerate for the correct user on install"
+      ]
+    },
+    {
+      "version": "1.1.4",
+      "changes": [
+        "FIXED: awww wallpaper setter now installed (awww-git from AUR) — was missing, friend saw Hyprland logo",
+        "FIXED: Wallpapers now actually get applied on first install"
+      ]
+    },
+    {
+      "version": "1.1.3",
+      "changes": [
+        "FIXED: Oh-My-Zsh now installs in install.sh (before .zshrc is copied)",
+        "FIXED: .zshrc no longer fails if oh-my-zsh is missing (added guard check)",
+        "FIXED: .zshrc now shows git clone errors instead of hiding them"
+      ]
+    },
+    {
+      "version": "1.1.2",
+      "changes": [
+        "FIXED: Replaced lock.png with Himeno Hot Face.png as default wallpaper",
+        "FIXED: Wallpaper picker now clears thumbnail cache on install (no more 'no wallpaper found')",
+        "FIXED: Wallpapers now force-overwrite on re-install (cp -n → cp -f)",
+        "FIXED: Glob pattern for wallpaper selection now handles spaces in filenames",
+        "FIXED: Lock screen wallpaper now copied from any wallpaper in ~/Pictures/Wallpapers/",
+        "FIXED: restore.sh updated to match new wallpaper strategy",
+        "IMPROVED: Wallpaper picker thumbnail cache reset on each install"
+      ]
+    },
+    {
+      "version": "1.1.1",
+      "changes": [
+        "FIXED: Timezone now detected with 4 API fallbacks",
+        "FIXED: NTP time sync enabled for automatic updates",
+        "FIXED: Hardware clock synced to UTC",
+        "IMPROVED: Better location detection reliability",
+        "IMPROVED: Timezone auto-detection with ipapi.co, ip-api.com, worldtimeapi, ipinfo.io"
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "changes": [
+        "FULL SYSTEM INSTALLER \u2014 Complete Arch Linux setup",
+        "DRIVERS: Auto-detects Intel/NVIDIA/AMD and installs correct GPU drivers",
+        "SYSTEM: Full pacman -Syu system update before everything",
+        "AUDIO: PipeWire + WirePlumber + all audio codecs",
+        "CODECS: ffmpeg, gst-plugins (all), libdvdcss, multimedia support",
+        "FONTS: JetBrains Mono Nerd, Noto, emoji, CJK, Fira Code, Ubuntu",
+        "THUMBNAILS: ffmpegthumbnailer, tumbler, raw, webp, poppler",
+        "FLATPAK: Installed + Flathub configured",
+        "YAY: AUR helper installed automatically",
+        "APPS: Google Chrome, Discord, VS Code bin, Spotify",
+        "APPS: VLC + all plugins, LibreOffice full, OBS Studio",
+        "APPS: Ark, Gwenview, htop, btop, fastfetch",
+        "SPICETIFY: CLI + Marketplace installed and configured",
+        "LAZYVIM: Starter cloned and ready (run nvim to finish)",
+        "TIMEZONE: Auto-detects via IP geolocation",
+        "WALLPAPERS: Folder created, SDDM wallpaper added",
+        "CLEAN: pacman/yay cache cleaned, flatpak unused removed",
+        "WALLPAPER PICKER FIX: Now shows wallpapers properly",
+        "KEYBINDINGS: Force overwritten on every update"
+      ]
+    },
+    {
+      "version": "1.0.2",
+      "changes": [
+        "FIXED: Missing config/ directory (no Super+T, Super+W, etc)",
+        "FIXED: variables.conf now included ($terminal = kitty works)",
+        "FIXED: keybindings.conf now overwrites old ones on update",
+        "FIXED: Wallpaper picker now installs xdg-user-dirs + xdg-desktop-portal-hyprland",
+        "FIXED: xdg-user-dirs-update runs automatically",
+        "FIXED: Hyprland config now force-overwrites on install",
+        "ADDED: Built-in dependency installer (pacman)",
+        "ADDED: config/ directory with all Hyprland config files",
+        "IMPROVED: Full keybinding overwrite on every update"
+      ]
+    },
+    {
+      "version": "1.0.1",
+      "changes": [
+        "FIXED: .zshrc oh-my-zsh URL (was incorrect causing errors)",
+        "FIXED: zsh-syntax-highlighting spelling error",
+        "ADDED: .zshrc now included in repo (auto-installs oh-my-zsh)",
+        "FIXED: Wallpaper picker (Super+W) now works",
+        "ADDED: Face icon support for SDDM and lockscreen",
+        "ADDED: install.sh now installs .face.icon for user profile"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "changes": [
+        "Initial release of Eprahemi Arch Config Replace",
+        "Complete Hyprland + QuickShell setup",
+        "One-line installer with sudo support",
+        "Automatic update notifications built-in",
+        "Dynamic Matugen theming integration",
+        "All configs: Kitty, Neovim, Rofi, SwayNC, SDDM"
+      ]
+    }
+  ]
 }
