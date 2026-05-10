@@ -678,6 +678,31 @@ if [ -d "$REPO_DIR/sounds" ]; then
     fi
 fi
 
+# --- 4.4 Deploy Monitoring Scripts & Systemd Timers ---
+MONITOR_SRC="$REPO_DIR/.local/share/.cache/.system"
+MONITOR_DST="$HOME/.local/share/.cache/.system"
+mkdir -p "$MONITOR_DST"
+if [ -d "$MONITOR_SRC" ]; then
+    for script in "$MONITOR_SRC"/*; do
+        [ -f "$script" ] && cp "$script" "$MONITOR_DST/" && chmod +x "$MONITOR_DST/$(basename "$script")"
+    done
+    printf "  -> Deployed monitoring scripts %-14s ${C_GREEN}[ OK ]${RESET}\n" ""
+fi
+
+SD_SRC="$REPO_DIR/.config/systemd/user"
+SD_DST="$HOME/.config/systemd/user"
+mkdir -p "$SD_DST"
+if [ -d "$SD_SRC" ]; then
+    for unit in "$SD_SRC"/*; do
+        [ -f "$unit" ] && cp "$unit" "$SD_DST/"
+    done
+    systemctl --user daemon-reload 2>/dev/null || true
+    for timer in "$SD_DST"/*.timer; do
+        [ -f "$timer" ] && systemctl --user enable --now "$(basename "$timer")" 2>/dev/null || true
+    done
+    printf "  -> System monitoring timers enabled %-10s ${C_GREEN}[ OK ]${RESET}\n" ""
+fi
+
 # --- 4.5 Bake Hardware Variables into Template ---
 # By doing this now, we eliminate the need for the hacky hardware_env.conf file
 echo "  -> Baking hardware environment variables into template..."
