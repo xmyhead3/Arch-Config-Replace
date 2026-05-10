@@ -340,15 +340,12 @@ EOF
     printf "${RESET}\n"
 
     local OSC8_GH="\e]8;;https://github.com/eprahemi/WifeRice.git\a"
-    local OSC8_TW="\e]8;;https://twitter.com/eprahemi\a"
     local OSC8_RD="\e]8;;https://reddit.com/u/eprahemi\a"
-    local OSC8_KF="\e]8;;https://ko-fi.com/eprahemi\a"
     local OSC8_END="\e]8;;\a"
 
     printf "\033[K${C_BLUE} -----------------------------------------------------------------${RESET}\n"
     printf "\033[K${BOLD}${C_GREEN} GitHub:${RESET}  ${OSC8_GH}https://github.com/eprahemi/WifeRice.git${OSC8_END}\n"
-    printf "\033[K${BOLD}${C_CYAN} Twitter:${RESET} ${OSC8_TW}@eprahemi${OSC8_END}  |  ${BOLD}${C_RED}Reddit:${RESET} ${OSC8_RD}u/eprahemi${OSC8_END}\n"
-    printf "\033[K${BOLD}${C_MAGENTA} Donate:${RESET}  ${OSC8_KF}Donate on Ko-fi (Help the project!)${OSC8_END}\n"
+    printf "\033[K${BOLD}${C_RED} Reddit:${RESET}  ${OSC8_RD}u/eprahemi${OSC8_END}\n"
     printf "\033[K${C_BLUE} -----------------------------------------------------------------${RESET}\n"
     printf "\033[K${BOLD} User:           ${RESET} %s\n" "$USER_NAME"
     printf "\033[K${BOLD} OS:             ${RESET} %s\n" "$OS_NAME"
