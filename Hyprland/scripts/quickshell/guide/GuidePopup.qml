@@ -2312,7 +2312,8 @@ Item {
                         }
                     }
 
-                // ─── COPYRIGHT ────────────────────────
+                }
+
                 // ─── COPYRIGHT ────────────────────────
                 Item {
                     anchors.horizontalCenter: parent.horizontalCenter
