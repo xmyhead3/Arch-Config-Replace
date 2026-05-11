@@ -582,8 +582,8 @@ if [ -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" ]; then
     if [ ! -d "$HOME/Pictures/Wallpapers" ] || [ -z "$(ls -A "$HOME/Pictures/Wallpapers" 2>/dev/null)" ]; then
         cp -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" "$HOME/Pictures/Wallpapers/"
     fi
-    # Lock screen wallpaper — only set once, never overwrite user's custom file
-    if [ ! -d /usr/share/wallpapers ]; then
+    # Lock screen wallpaper — only set if user doesn't already have one
+    if [ ! -f /usr/share/wallpapers/lock.png ]; then
         sudo mkdir -p /usr/share/wallpapers
         sudo cp -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" /usr/share/wallpapers/lock.png
     fi
