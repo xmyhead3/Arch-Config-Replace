@@ -109,7 +109,7 @@ Item {
     Process {
         id: remoteVerProcess
         running: false
-        command: ["bash", "-c", "curl -m 5 -s https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh | grep '^DOTS_VERSION=' | cut -d'\"' -f2"]
+        command: ["bash", "-c", "curl -m 5 -sL https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh | grep '^DOTS_VERSION=' | cut -d'\"' -f2"]
         stdout: StdioCollector {
             onStreamFinished: {
                 let out = this.text ? this.text.trim() : "";
