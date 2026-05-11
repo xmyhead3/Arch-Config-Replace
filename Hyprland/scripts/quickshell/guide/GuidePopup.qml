@@ -2225,7 +2225,7 @@ Item {
                             model: [
                                 { name: "GitHub", icon: "", color: "blue", url: "https://github.com/eprahemi" },
                                 { name: "Eprahemi", icon: "󰣇", color: "mauve", url: "https://github.com/eprahemi/WifeRice" },
-                                { name: "Wallpapers", icon: "", color: "peach", url: "https://github.com/eprahemi/WifeRice" }
+                                { name: "Wallpapers", icon: "", color: "peach", url: "https://wallvault.pages.dev/" }
                             ]
 
                             Rectangle {
