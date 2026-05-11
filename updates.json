@@ -1,7 +1,13 @@
 {
-  "latest_version": "1.7.14",
+  "latest_version": "1.7.15",
   "videos": [],
   "changelog": [
+    {
+      "version": "1.7.15",
+      "changes": [
+        "CLEANUP: Removed all # THE LOCATIONS.txt files from repo"
+      ]
+    },
     {
       "version": "1.7.14",
       "changes": [
