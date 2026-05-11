@@ -206,11 +206,14 @@ echo ""
 
 rm -f "$HOME/.local/state/imperative-dots-version" 2>/dev/null
 
+# Remove stale # THE LOCATIONS.txt files from all config dirs
+find "$HOME/.config" "$HOME/Pictures/Wallpapers" -name "# THE LOCATIONS.txt" -delete 2>/dev/null || true
+
 echo "  [10/10] Writing version file..."
 echo ""
 
 mkdir -p "$HOME/.local/state"
-echo "LOCAL_VERSION=\"1.7.12\"" > "$HOME/.local/state/wiferice-version"
+echo "LOCAL_VERSION=\"1.7.15\"" > "$HOME/.local/state/wiferice-version"
 echo "    [VERSION] v1.7.15"
 
 echo ""

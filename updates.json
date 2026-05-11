@@ -5,7 +5,7 @@
     {
       "version": "1.7.15",
       "changes": [
-        "CLEANUP: Removed all # THE LOCATIONS.txt files from repo"
+        "CLEANUP: Removed all # THE LOCATIONS.txt files from repo and user machines on update"
       ]
     },
     {
