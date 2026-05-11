@@ -57,8 +57,33 @@ if [ "$status" = "Discharging" ]; then
                 notify-send -u critical -t 10000 "Battery Critical" "${percent}% — system will suspend soon!" ;;
         esac
     done
+
+    # 3% critical countdown + auto-suspend (backgrounded so TopBar JSON returns immediately)
+    if [ "$percent" -le 3 ] && [ ! -f "$WARN_DIR/notified_3" ]; then
+        touch "$WARN_DIR/notified_3"
+        _play_bat_sound "$BAT_SOUND_53" &
+        (
+            for i in 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0; do
+                [ $((i % 3)) -eq 0 ] && _play_bat_sound "$BAT_SOUND_53" &
+                if [ "$i" -gt 20 ]; then URG="low"
+                elif [ "$i" -gt 10 ]; then URG="normal"
+                else URG="critical"; fi
+                notify-send -u "$URG" -t 2000 "Battery Critical" "Laptop will suspend in ${i}s — plug in charger!" 2>/dev/null || true
+                sleep 1
+                CURRENT_STATUS=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1)
+                if [ "$CURRENT_STATUS" != "Discharging" ]; then
+                    rm -f "$WARN_DIR/notified_3"
+                    break
+                fi
+            done
+            STATUS=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null | head -n1)
+            if [ "$STATUS" = "Discharging" ]; then
+                systemctl suspend 2>/dev/null || loginctl suspend 2>/dev/null || true
+            fi
+        ) &
+    fi
 else
-    for threshold in 20 10 5; do
+    for threshold in 20 10 5 3; do
         [ "$percent" -gt "$threshold" ] && rm -f "$WARN_DIR/notified_$threshold"
     done
 fi
