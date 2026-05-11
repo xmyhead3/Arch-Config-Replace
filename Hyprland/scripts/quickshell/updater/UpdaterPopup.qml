@@ -96,7 +96,7 @@ Item {
     Process {
         id: localVerProcess
         running: false
-        command: ["bash", "-c", "source ~/.local/state/waverice-version 2>/dev/null && [ -n \"$LOCAL_VERSION\" ] && echo $LOCAL_VERSION || echo '0.0.0'"]
+        command: ["bash", "-c", "source ~/.local/state/wiferice-version 2>/dev/null && [ -n \"$LOCAL_VERSION\" ] && echo $LOCAL_VERSION || echo '0.0.0'"]
         stdout: StdioCollector {
             onStreamFinished: {
                 let out = this.text ? this.text.trim() : "";
@@ -122,7 +122,7 @@ Item {
     property string videoResolveScript: `
 import urllib.request, json, subprocess, sys
 try:
-    local_str = subprocess.check_output("source ~/.local/state/waverice-version 2>/dev/null && echo $LOCAL_VERSION", shell=True).decode('utf-8').strip()
+    local_str = subprocess.check_output("source ~/.local/state/wiferice-version 2>/dev/null && echo $LOCAL_VERSION", shell=True).decode('utf-8').strip()
     if not local_str: local_str = '0.0.0'
     
     # Safe Semantic Version Parsing
@@ -194,7 +194,7 @@ import urllib.request, json, subprocess
 repo = 'eprahemi/WifeRice'
 
 try:
-    local = subprocess.check_output("source ~/.local/state/waverice-version 2>/dev/null && echo $LOCAL_VERSION", shell=True).decode('utf-8').strip()
+    local = subprocess.check_output("source ~/.local/state/wiferice-version 2>/dev/null && echo $LOCAL_VERSION", shell=True).decode('utf-8').strip()
 except:
     local = ''
 
@@ -203,7 +203,7 @@ if not local:
 
 def get_latest():
     try:
-        req = urllib.request.Request('https://api.github.com/repos/' + repo + '/commits/master', headers={'User-Agent': 'updater'})
+        req = urllib.request.Request('https://api.github.com/repos/' + repo + '/commits/main', headers={'User-Agent': 'updater'})
         res = urllib.request.urlopen(req, timeout=5)
         print(json.loads(res.read().decode())['commit']['message'])
     except Exception: print('No changelog available')
@@ -236,7 +236,7 @@ try:
                 break
                 
         if local_sha:
-            compare_req = urllib.request.Request('https://api.github.com/repos/' + repo + '/compare/' + local_sha + '...master', headers={'User-Agent': 'updater'})
+            compare_req = urllib.request.Request('https://api.github.com/repos/' + repo + '/compare/' + local_sha + '...main', headers={'User-Agent': 'updater'})
             compare_res = urllib.request.urlopen(compare_req, timeout=5)
             data = json.loads(compare_res.read().decode())
             commits = data.get('commits', [])

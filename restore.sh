@@ -105,21 +105,33 @@ fi
 
 echo ""
 
-# ─── INSTALL .zshrc ─────────────────────────────────────────────────
+# ─── REGENERATE CONFIGS FOR CURRENT USER ───────────────────────────
 
-echo "  [4/9] Installing .zshrc..."
+echo "  [4/10] Regenerating configs for current user..."
 echo ""
 
-if [ -f "$SCRIPT_DIR/.zshrc" ]; then
+if [ -f "$HOME/.config/hypr/scripts/settings_watcher.sh" ]; then
+    bash "$HOME/.config/hypr/scripts/settings_watcher.sh" --compile 2>/dev/null || true
+    echo "    [OK] Configs regenerated for user $CURRENT_USER"
+fi
+
+echo ""
+
+# ─── INSTALL .zshrc ─────────────────────────────────────────────────
+
+echo "  [5/10] Installing .zshrc..."
+echo ""
+
+if [ -f "$SCRIPT_DIR/.zshrc" ] && [ ! -f "$HOME/.zshrc" ]; then
     cp -f "$SCRIPT_DIR/.zshrc" "$HOME/.zshrc"
-    echo "    [INSTALLED] ~/.zshrc (oh-my-zsh auto-installs)"
+    echo "    [INSTALLED] ~/.zshrc (first install)"
 fi
 
 echo ""
 
 # ─── INSTALL FACE ICON ─────────────────────────────────────────────────
 
-echo "  [5/9] Installing user face icon..."
+echo "  [6/10] Installing user face icon..."
 echo ""
 
 if [ -f "$SCRIPT_DIR/Faces/.face.icon" ] && [ ! -f "$HOME/.face.icon" ] && [ ! -f "/usr/share/sddm/faces/${CURRENT_USER}.face.icon" ]; then
@@ -137,7 +149,7 @@ echo ""
 
 # ─── COPY WALLPAPERS TO PICTURES FOLDER ───────────────────────────────
 
-echo "  [6/9] Setting up wallpapers for picker (Super+W)..."
+echo "  [7/10] Setting up wallpapers for picker (Super+W)..."
 echo ""
 
 mkdir -p "$HOME/Pictures/Wallpapers"
@@ -148,16 +160,21 @@ if [ -d "$SCRIPT_DIR/Wallpapers" ]; then
 fi
 
 echo "    [INFO] Add more wallpapers to ~/Pictures/Wallpapers/"
+
+# Clear wallpaper picker thumbnail cache for a fresh start
+rm -rf "$HOME/.cache/wallpaper_picker" 2>/dev/null || true
+echo "    [OK] Wallpaper thumbnail cache cleared"
+
 echo ""
 
 # ─── SDDM WALLPAPER ──────────────────────────────────────────
 
-echo "  [7/9] Restoring SDDM wallpaper..."
+echo "  [8/10] Restoring SDDM wallpaper..."
 echo ""
 
 if [ -d "$SCRIPT_DIR/SDDM-Wallpaper" ]; then
     # Lock screen wallpaper — only set once, never overwrite user's custom file
-    if [ ! -d /usr/share/wallpapers ] && command -v sudo &>/dev/null; then
+    if [ ! -f /usr/share/wallpapers/lock.png ] && command -v sudo &>/dev/null; then
         sudo mkdir -p /usr/share/wallpapers
         sudo cp -f "$SCRIPT_DIR/SDDM-Wallpaper/wallpaper.png" /usr/share/wallpapers/lock.png
         echo "    [RESTORED] /usr/share/wallpapers/lock.png (Lockscreen)"
@@ -174,7 +191,7 @@ echo ""
 
 # ─── FIX KEYBINDINGS PERMISSIONS ─────────────────────────────────────
 
-echo "  [8/9] Setting up keybinding permissions..."
+echo "  [9/10] Setting up keybinding permissions..."
 echo ""
 
 chmod +x ~/.config/hypr/scripts/*.sh 2>/dev/null || true
@@ -184,12 +201,12 @@ echo ""
 
 # ─── WRITE VERSION FILE ────────────────────────────────────────────────
 
-echo "  [9/9] Writing version file..."
+echo "  [10/10] Writing version file..."
 echo ""
 
 mkdir -p "$HOME/.local/state"
-echo "LOCAL_VERSION=\"1.5.4\"" > "$HOME/.local/state/wiferice-version"
-echo "    [VERSION] v1.5.4"
+echo "LOCAL_VERSION=\"1.7.5\"" > "$HOME/.local/state/wiferice-version"
+echo "    [VERSION] v1.7.5"
 
 echo ""
 
@@ -203,7 +220,7 @@ hyprctl reload 2>/dev/null && echo "    [OK] Hyprland reloaded" || echo "    [WA
 echo ""
 echo "  ──────────────────────────────────────────────"
 echo ""
-echo "  ✅ All configs restored successfully! (v1.0.2)"
+echo "  ✅ All configs restored successfully! (v1.7.5)"
 echo ""
 echo "  👤 User: $CURRENT_USER"
 echo "  📂 Old configs backed up to: $BACKUP_DIR"

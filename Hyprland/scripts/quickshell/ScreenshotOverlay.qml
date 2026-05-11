@@ -512,7 +512,7 @@ PanelWindow {
             Text {
                 visible: micModel.count === 0
                 anchors.centerIn: parent
-                text: "No Microphones (Install pulseaudio)"
+                text: "No Microphones (Install PipeWire)"
                 color: _theme.subtext0
                 font.pixelSize: s(12)
             }

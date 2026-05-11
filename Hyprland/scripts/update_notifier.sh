@@ -10,7 +10,7 @@ PENDING_FILE="$HOME/.cache/qs_update_pending"
 
 while true; do
     # Fetch local version
-    LOCAL_VERSION=$(source ~/.local/state/wiferice-version 2>/dev/null && echo "$LOCAL_VERSION")
+    LOCAL_VERSION=$(source ~/.local/state/wiferice-version 2>/dev/null && echo "${LOCAL_VERSION:-Unknown}" || echo "Unknown")
     LOCAL_VERSION=${LOCAL_VERSION:-"Unknown"}
     
     # Fetch remote version

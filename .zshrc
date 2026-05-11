@@ -214,14 +214,14 @@ refresh() {
 update() {
     local current_version remote_version
 
-    if [ -f ~/.local/state/waverice-version ]; then
-        source ~/.local/state/waverice-version
+    if [ -f ~/.local/state/wiferice-version ]; then
+        source ~/.local/state/wiferice-version
         current_version="$LOCAL_VERSION"
     else
         current_version="Unknown"
     fi
 
-    remote_version=$(curl -m 5 -s https://raw.githubusercontent.com/eprahemi/WaveRice/main/install.sh | grep '^DOTS_VERSION=' | cut -d'"' -f2)
+    remote_version=$(curl -m 5 -s https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh | grep '^DOTS_VERSION=' | cut -d'"' -f2)
 
     if [ -z "$remote_version" ]; then
         echo "  [ERROR] Could not check for updates. Check your internet connection."
@@ -243,7 +243,7 @@ update() {
     if [[ "$answer" =~ ^[Yy]$ ]]; then
         echo ""
         echo "  Downloading and installing v$remote_version..."
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/eprahemi/WaveRice/main/install.sh)"
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh)"
     else
         echo "  Update skipped."
     fi
