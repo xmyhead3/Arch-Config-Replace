@@ -36,6 +36,8 @@ mkdir -p "$WARN_DIR"
 _play_bat_sound() {
     local file="$1"
     [ -f "$file" ] && (
+        pw-play "$file" 2>/dev/null ||
+        paplay "$file" 2>/dev/null ||
         mpg123 --quiet "$file" 2>/dev/null ||
         ffplay -nodisp -autoexit "$file" 2>/dev/null ||
         true
