@@ -5,7 +5,7 @@
 #  One-liner: bash -c "$(curl -fsSL https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh)"
 # ===========================================================================
 
-DOTS_VERSION="1.7.18"
+DOTS_VERSION="1.7.19"
 DOTS_VERSION_NAME=""
 
 set -e
@@ -133,8 +133,8 @@ echo -e "  ${G}✓${N} Downloaded to $INSTALL_DIR"
 echo ""
 echo -e "${G}[2/18]${N} Updating system packages..."
 echo ""
-sudo pacman -Syu --noconfirm 2>/dev/null || true
-echo -e "  ${G}✓${N} System updated"
+sudo pacman -Sy --noconfirm 2>/dev/null || true
+echo -e "  ${G}✓${N} Package databases synced"
 
 # ─── GPU DRIVER DETECTION & INSTALL ────────────────────────────────────
 
@@ -502,8 +502,12 @@ for component in Hyprland Kitty Neovim Rofi SwayNC Matugen; do
     case "$component" in
         Hyprland)
             TARGET="$HOME/.config/hypr"
+            # Backup user's weather env and important settings
             if [ -f "$TARGET/scripts/quickshell/calendar/.env" ]; then
                 cp "$TARGET/scripts/quickshell/calendar/.env" /tmp/hyprland_weather_env.bak
+            fi
+            if [ -f "$TARGET/settings.json" ]; then
+                cp "$TARGET/settings.json" /tmp/hyprland_settings.bak
             fi
             ;;
         Kitty) TARGET="$HOME/.config/kitty" ;;
@@ -514,12 +518,22 @@ for component in Hyprland Kitty Neovim Rofi SwayNC Matugen; do
     esac
 
     if [ -d "$INSTALL_DIR/$component" ]; then
+        # Safety: verify source has files before wiping target
+        if [ -z "$(ls -A "$INSTALL_DIR/$component/" 2>/dev/null)" ]; then
+            echo -e "  ${R}[WARN]${N} $component source is empty — skipping restore"
+            continue
+        fi
         rm -rf "$TARGET" 2>/dev/null
         mkdir -p "$TARGET"
         cp -rf "$INSTALL_DIR/$component/"* "$TARGET/" 2>/dev/null
         if [ "$component" = "Hyprland" ] && [ -f /tmp/hyprland_weather_env.bak ]; then
             mkdir -p "$TARGET/scripts/quickshell/calendar"
             mv /tmp/hyprland_weather_env.bak "$TARGET/scripts/quickshell/calendar/.env"
+        fi
+        # Restore user's settings.json so monitor/keybind config survives
+        if [ "$component" = "Hyprland" ] && [ -f /tmp/hyprland_settings.bak ]; then
+            cp /tmp/hyprland_settings.bak "$TARGET/settings.json"
+            rm -f /tmp/hyprland_settings.bak
         fi
         echo -e "  ${G}✓${N} $component restored"
     fi
@@ -841,7 +855,7 @@ echo "  WHAT WAS INSTALLED:"
 echo "  ──────────────────────────────────────────────"
 echo ""
 echo "  🖥  GPU Drivers: Detected & installed ($(lspci | grep -i 'vga\|3d' | head -3 | sed 's/.*: //' | tr '\n' ',' | sed 's/,$//'))"
-echo "  🔧 System: Updated all packages (pacman -Syu)"
+echo "  🔧 System: Synced package databases (pacman -Sy)"
 echo "  🎵 Audio: PipeWire + WirePlumber + codecs"
 echo "  🖼  Codecs: ffmpeg, gst-plugins (all), libdvdcss"
 echo "  🔤 Fonts: JetBrains Mono, Nerd Fonts, Noto, emoji, CJK"
