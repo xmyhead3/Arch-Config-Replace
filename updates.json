@@ -1,7 +1,13 @@
 {
-  "latest_version": "1.7.20",
+  "latest_version": "1.7.21",
   "videos": [],
   "changelog": [
+    {
+      "version": "1.7.21",
+      "changes": [
+        "ADDED: Update notification sound — plays update-notification.mp3 when a new version is available"
+      ]
+    },
     {
       "version": "1.7.20",
       "changes": [

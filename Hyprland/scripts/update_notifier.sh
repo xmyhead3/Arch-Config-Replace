@@ -8,6 +8,8 @@ CACHE_FILE="$HOME/.cache/qs_update_notified_version"
 # State file to tell the topbar to show the update button
 PENDING_FILE="$HOME/.cache/qs_update_pending"
 
+UPDATE_SOUND="$HOME/.config/hypr/scripts/quickshell/updater/update-notification.mp3"
+
 while true; do
     # Fetch local version
     LOCAL_VERSION=$(source ~/.local/state/wiferice-version 2>/dev/null && echo "${LOCAL_VERSION:-Unknown}" || echo "Unknown")
@@ -38,6 +40,7 @@ while true; do
 
                 # Send clickable notification — tapping it opens the terminal and runs the installer
                 notify-send -t 10000 -a 'Eprahemi Dots' -u normal 'Update Available' "A new version ($REMOTE_VERSION) is ready — tap to update." --action=default,Update
+                nohup pw-play "$UPDATE_SOUND" >/dev/null 2>&1 &
                 
             fi
         fi
