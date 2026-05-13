@@ -68,7 +68,23 @@ case "${1:-playlist}" in
     echo "resumed"
     ;;
   toggle)
-    if [[ -f "$STATE_DIR/paused" ]]; then
+    # Check if pw-play is actually running
+    OLD_PID=$(cat "$STATE_DIR/pid" 2>/dev/null)
+    if [ -z "$OLD_PID" ] || ! kill -0 "$OLD_PID" 2>/dev/null; then
+      # No active playback — start playing
+      INDEX=$(cat "$STATE_DIR/index" 2>/dev/null || echo 0)
+      mapfile -t SONGS < "$STATE_DIR/playlist" 2>/dev/null
+      TOTAL=${#SONGS[@]}
+      [[ $TOTAL -eq 0 ]] && exit 1
+      INDEX=$((INDEX % TOTAL))
+      echo "$INDEX" > "$STATE_DIR/index"
+      echo "${SONGS[$INDEX]}" > "$STATE_DIR/song"
+      basename "${SONGS[$INDEX]}" .mp3 > "$STATE_DIR/display-name"
+      pw-play "${SONGS[$INDEX]}" 2>/dev/null &
+      echo $! > "$STATE_DIR/pid"
+      _apply_volume
+      echo "playing"
+    elif [[ -f "$STATE_DIR/paused" ]]; then
       rm "$STATE_DIR/paused"
       pkill -CONT pw-play 2>/dev/null
       echo "resumed"

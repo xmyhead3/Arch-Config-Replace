@@ -1,7 +1,14 @@
 {
-  "latest_version": "1.7.23",
+  "latest_version": "1.7.24",
   "videos": [],
   "changelog": [
+    {
+      "version": "1.7.24",
+      "changes": [
+        "CHANGED: Lock screen music no longer plays automatically — press the play button in the bottom-left to start",
+        "FIXED: Lock screen music now stops when user unlocks (added pkill pw-play fallback in lock.sh)"
+      ]
+    },
     {
       "version": "1.7.23",
       "changes": [

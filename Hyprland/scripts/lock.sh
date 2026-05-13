@@ -18,16 +18,12 @@ echo "$INDEX" > "$STATE_DIR/index"
 echo "${SONGS[$INDEX]}" > "$STATE_DIR/song"
 basename "${SONGS[$INDEX]}" .mp3 > "$STATE_DIR/display-name"
 
-pw-play "${SONGS[$INDEX]}" 2>/dev/null &
-echo $! > "$STATE_DIR/pid"
-
-# Apply volume
-sleep 0.1
-SINK_ID=$(pactl list sink-inputs 2>/dev/null | grep -B20 'pw-play' | grep 'Sink Input #' | head -1 | grep -o '[0-9][0-9]*')
-pactl set-sink-input-volume "$SINK_ID" "50%" 2>/dev/null
-echo 50 > "$STATE_DIR/volume"
+# Don't start music — wait for user to press play in the lock screen
+rm -f "$STATE_DIR/pid" "$STATE_DIR/paused"
 
 quickshell -p ~/.config/hypr/scripts/quickshell/Lock.qml
 
+# Stop music when user unlocks
 kill "$(cat "$STATE_DIR/pid" 2>/dev/null)" 2>/dev/null
+pkill pw-play 2>/dev/null
 wait 2>/dev/null
