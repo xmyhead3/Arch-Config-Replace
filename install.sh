@@ -586,9 +586,11 @@ if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting" ]; then
     echo -e "  ${G}✓${N} zsh-syntax-highlighting installed"
 fi
 
-if [ -f "$INSTALL_DIR/.zshrc" ]; then
+ZSH_DEPLOY_FLAG="$HOME/.cache/qs_zshrc_deployed"
+if [ -f "$INSTALL_DIR/.zshrc" ] && [ ! -f "$ZSH_DEPLOY_FLAG" ]; then
     cp -f "$INSTALL_DIR/.zshrc" "$HOME/.zshrc"
-    echo -e "  ${G}✓${N} ~/.zshrc deployed"
+    touch "$ZSH_DEPLOY_FLAG"
+    echo -e "  ${G}✓${N} ~/.zshrc deployed (one-time)"
 fi
 
 # Only set default face icon if user doesn't already have one
