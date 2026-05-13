@@ -2274,6 +2274,15 @@ Item {
                         }
                     }
 
+                    // ─── TIP ─────────────────────────────────────────────
+                    Text {
+                        text: "Tip: Type 'update' in your terminal"
+                        font.family: "JetBrains Mono"
+                        font.pixelSize: root.s(11)
+                        color: Qt.alpha(root.subtext0, 0.5)
+                        Layout.alignment: Qt.AlignHCenter
+                    }
+
                     // ─── DIVIDER ───────────────────────────────────────
                     Rectangle {
                         Layout.alignment: Qt.AlignHCenter
