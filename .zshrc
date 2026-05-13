@@ -210,3 +210,23 @@ refresh() {
     fetch
 }
 
+# Check for dotfiles update & install if available
+function update() {
+    local remote_ver=$(curl -fsSL "https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh" 2>/dev/null | grep "^DOTS_VERSION=" | cut -d'"' -f2)
+    local local_ver=$(source "$HOME/.local/state/wiferice-version" 2>/dev/null && echo "$LOCAL_VERSION" || echo "unknown")
+
+    if [ -z "$remote_ver" ] || [ "$remote_ver" = "unknown" ]; then
+        echo "  Failed to check for updates (no internet?)"
+        return 1
+    fi
+
+    if [ "$local_ver" = "$remote_ver" ]; then
+        echo "  You're already on the latest version (v$local_ver)"
+        return 0
+    fi
+
+    echo "  Update available: v$local_ver → v$remote_ver"
+    echo "  Downloading update..."
+    bash -c "$(curl -fsSL https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh)"
+}
+
