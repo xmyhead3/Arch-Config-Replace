@@ -1,7 +1,18 @@
 {
-  "latest_version": "1.7.26",
+  "latest_version": "1.7.27",
   "videos": [],
   "changelog": [
+    {
+      "version": "1.7.27",
+      "changes": [
+        "ADDED: QuickShell Amethyst Noir — hardcoded deep purple/indigo palette, no more wallpaper-based color changes (MatugenColors.qml rewritten)",
+        "FIXED: BatteryPopup crash on charger plug/unplug — replaced NumberAnimation driving requestPaint with crash-safe Timer + Date.now()",
+        "ADDED: 10 new BatteryPopup visual effects — liquid depth layers, shimmer band, surface foam, floating embers, pulse ripples, ring plasma sweep, audio-reactive turbulence, lava lamp blobs, charging bubbles, click ripple",
+        "ADDED: Glow pulse on battery core hover — inner halo brightens smoothly",
+        "ADDED: Drag-to-brightness on battery core — drag up/down to adjust screen brightness",
+        "ADDED: Click ripple expanding ring on battery core tap"
+      ]
+    },
     {
       "version": "1.7.26",
       "changes": [
