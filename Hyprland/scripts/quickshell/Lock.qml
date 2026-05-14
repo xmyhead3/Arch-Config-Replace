@@ -109,6 +109,17 @@ ShellRoot {
 
                 // ── Data properties ───────────────────────────────────────────
                 property string staticWallpaperPath: "file:///usr/share/wallpapers/lock.png"
+
+                Process {
+                    id: lockWallpaperFinder; running: true
+                    command: ["bash", "-c",
+                        "for dir in \"$HOME/.Wallpapers\" \"$HOME/Pictures/Wallpapers\" /usr/share/wallpapers; do " +
+                        "for f in \"$dir\"/lock.*; do " +
+                        "[ -f \"$f\" ] && echo \"$f\" && exit 0; " +
+                        "done; done; " +
+                        "echo '/usr/share/wallpapers/lock.png'"]
+                    stdout: StdioCollector { onStreamFinished: screenRoot.staticWallpaperPath = "file://" + this.text.trim() }
+                }
                 property string batPct:     "100"
                 property string batStatus:   "AC"
                 property string currentUser: "User"

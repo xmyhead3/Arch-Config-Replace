@@ -114,28 +114,27 @@ Item {
     }
     Keys.onEnterPressed: { Keys.onReturnPressed(event); }
 
-    MatugenColors { id: _theme }
     // -------------------------------------------------------------------------
-    // COLORS
+    // COLOR PALETTE — AMETHYST NOIR
     // -------------------------------------------------------------------------
-    readonly property color base: _theme.base
-    readonly property color mantle: _theme.mantle
-    readonly property color crust: _theme.crust
-    readonly property color text: _theme.text
-    readonly property color subtext0: _theme.subtext0
-    readonly property color subtext1: _theme.subtext1
-    readonly property color surface0: _theme.surface0
-    readonly property color surface1: _theme.surface1
-    readonly property color surface2: _theme.surface2
-    readonly property color overlay0: _theme.overlay0
-    readonly property color mauve: _theme.mauve
-    readonly property color pink: _theme.pink
-    readonly property color blue: _theme.blue
-    readonly property color sapphire: _theme.sapphire
-    readonly property color green: _theme.green
-    readonly property color peach: _theme.peach
-    readonly property color yellow: _theme.yellow
-    readonly property color red: _theme.red
+    property color base: "#0a0a12"
+    property color mantle: "#0f0f1e"
+    property color crust: "#161625"
+    property color text: "#e8e0f4"
+    property color subtext0: "#9a8ab8"
+    property color subtext1: "#b8aad0"
+    property color surface0: "#1a1a30"
+    property color surface1: "#252542"
+    property color surface2: "#303058"
+    property color overlay0: "#48487a"
+    property color mauve: "#b388ff"
+    property color pink: "#ff80d7"
+    property color blue: "#82b1ff"
+    property color sapphire: "#64d8ff"
+    property color green: "#69f0ae"
+    property color peach: "#ffb74d"
+    property color yellow: "#ffd54f"
+    property color red: "#ff5252"
 
     property var continentData: [
         { region: "America", icon: "", color: root.blue, zones: [
@@ -353,8 +352,9 @@ Item {
         NumberAnimation { to: 0.0; duration: 15000; easing.type: Easing.InOutSine }
     }
     
-    property color ambientPurple: Qt.tint(root.mauve, Qt.rgba(root.pink.r, root.pink.g, root.pink.b, colorBlend))
-    property color ambientBlue: Qt.tint(root.blue, Qt.rgba(root.sapphire.r, root.sapphire.g, root.sapphire.b, colorBlend))
+    property color ambientAmethyst: Qt.tint("#b388ff", Qt.rgba(0.702, 0.502, 1.0, colorBlend * 0.3))
+    property color ambientMagenta: Qt.tint("#e040fb", Qt.rgba(0.878, 0.251, 0.984, colorBlend * 0.3))
+    property color ambientDeep: Qt.tint("#7c4dff", Qt.rgba(0.486, 0.302, 1.0, colorBlend * 0.3))
 
     // -------------------------------------------------------------------------
     // GLOBALS
@@ -614,41 +614,41 @@ Item {
                 running: true 
             }
             
-            // Orb 1
+            // Orb 1 — Amethyst core
             Rectangle {
                 width: root.s(800)
                 height: root.s(800)
                 radius: root.s(400)
                 x: parent.width * 0.5 + Math.cos(parent.time) * root.s(150)
                 y: parent.height * 0.1 + Math.sin(parent.time * 1.5) * root.s(150)
-                color: root.ambientPurple
-                opacity: 0.06
+                color: root.ambientAmethyst
+                opacity: 0.07
                 layer.enabled: true
                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 100; blur: 1.0 }
             }
             
-            // Orb 2
+            // Orb 2 — Magenta drift
             Rectangle {
                 width: root.s(900)
                 height: root.s(900)
                 radius: root.s(450)
                 x: parent.width * 0.1 + Math.sin(parent.time * 0.8) * root.s(200)
                 y: parent.height * 0.4 + Math.cos(parent.time * 1.2) * root.s(150)
-                color: root.ambientBlue
-                opacity: 0.05
+                color: root.ambientMagenta
+                opacity: 0.06
                 layer.enabled: true
                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 110; blur: 1.0 }
             }
 
-            // Orb 3
+            // Orb 3 — Deep violet
             Rectangle {
                 width: root.s(700)
                 height: root.s(700)
                 radius: root.s(350)
                 x: parent.width * 0.3 + Math.cos(parent.time * 1.1) * root.s(120)
                 y: parent.height * 0.6 + Math.sin(parent.time * 0.9) * root.s(180)
-                color: Qt.tint(root.peach, Qt.rgba(root.yellow.r, root.yellow.g, root.yellow.b, colorBlend))
-                opacity: 0.04
+                color: root.ambientDeep
+                opacity: 0.05
                 layer.enabled: true
                 layer.effect: MultiEffect { blurEnabled: true; blurMax: 90; blur: 1.0 }
             }
@@ -670,8 +670,8 @@ Item {
             Layout.fillHeight: true
             Layout.preferredWidth: root.s(220)
             radius: root.s(12)
-            color: Qt.alpha(root.surface0, 0.4)
-            border.color: root.surface1
+            color: Qt.alpha(root.crust, 0.6)
+            border.color: Qt.alpha(root.mauve, 0.08)
             border.width: 1
             opacity: introSidebar
             transform: Translate { x: root.s(-30) * (1.0 - introSidebar) }
@@ -694,13 +694,15 @@ Item {
                             width: root.s(36)
                             height: root.s(36)
                             radius: root.s(10)
-                            color: root.ambientPurple
+                            color: Qt.alpha(root.mauve, 0.2)
+                            border.color: Qt.alpha(root.mauve, 0.3)
+                            border.width: 1
                             Text { 
                                 anchors.centerIn: parent
                                 text: "󰣇"
                                 font.family: "Iosevka Nerd Font"
                                 font.pixelSize: root.s(20)
-                                color: root.base 
+                                color: root.mauve
                             }
                         }
                         
@@ -729,7 +731,7 @@ Item {
                 Rectangle { 
                     Layout.fillWidth: true
                     height: 1
-                    color: Qt.alpha(root.surface1, 0.5)
+                    color: Qt.alpha(root.mauve, 0.06)
                     Layout.bottomMargin: root.s(10) 
                 }
 
@@ -749,12 +751,29 @@ Item {
                         z: 0
 
                         property int curIdx: root.currentTab
-                        // Index 0 starts at 0. Index 1 starts after Index 0 (44) and Divider (21) = 65
                         property real targetY: curIdx === 0 ? 0 : root.s(65) + (curIdx - 1) * root.s(44)
                         y: targetY
 
                         Behavior on y {
                             NumberAnimation { duration: 400; easing.type: Easing.OutExpo }
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: root.s(8)
+                            color: "transparent"
+                            border.color: Qt.alpha("#d0b0ff", 0.15)
+                            border.width: 1
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -root.s(8)
+                            radius: root.s(12)
+                            color: Qt.alpha(root.mauve, 0.08)
+                            z: -1
+                            layer.enabled: true
+                            layer.effect: MultiEffect { blurEnabled: true; blurMax: 20; blur: 0.6 }
                         }
                     }
 
@@ -801,7 +820,7 @@ Item {
                                                 font.family: "Iosevka Nerd Font"
                                                 font.pixelSize: root.s(18)
                                                 // Dynamic colors (crust vs subtext0) for contrast
-                                                color: parent.parent.parent.isActive ? root.crust : root.subtext0
+                                                color: parent.parent.parent.isActive ? root.base : root.subtext0
                                                 Behavior on color { ColorAnimation { duration: 150 } } 
                                             }
                                         }
@@ -809,10 +828,9 @@ Item {
                                         Text { 
                                             text: root.tabNames[index]
                                             font.family: "JetBrains Mono"
-                                            font.weight: parent.parent.isActive ? Font.Bold : Font.Medium
+                                            font.weight: parent.parent.isActive ? Font.Black : Font.Medium
                                             font.pixelSize: root.s(13)
-                                            // Dynamic colors (crust vs subtext0) for contrast
-                                            color: parent.parent.isActive ? root.crust : root.subtext0
+                                            color: parent.parent.isActive ? root.base : root.subtext0
                                             Layout.fillWidth: true
                                             Layout.alignment: Qt.AlignVCenter
                                             Behavior on color { ColorAnimation { duration: 150 } } 
@@ -843,12 +861,12 @@ Item {
                                     width: parent.width
                                     height: root.s(21) // 10 top + 1 mid + 10 bot
                                     
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: parent.width
-                                        height: 1
-                                        color: Qt.alpha(root.surface1, 0.5)
-                                    }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: parent.width
+                                    height: 1
+                                    color: Qt.alpha(root.mauve, 0.06)
+                                }
                                 }
                             }
                         }
@@ -862,8 +880,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: root.s(44)
                     radius: root.s(8)
-                    color: closeHover.containsMouse ? Qt.alpha(root.red, 0.1) : "transparent"
-                    border.color: closeHover.containsMouse ? root.red : root.surface1
+                    color: closeHover.containsMouse ? Qt.alpha(root.red, 0.08) : "transparent"
+                    border.color: closeHover.containsMouse ? Qt.alpha(root.red, 0.4) : Qt.alpha(root.mauve, 0.08)
                     border.width: 1
                     scale: closeHover.pressed ? 0.95 : (closeHover.containsMouse ? 1.02 : 1.0)
                     
@@ -880,7 +898,7 @@ Item {
                             text: ""
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: root.s(16)
-                            color: closeHover.containsMouse ? root.red : root.subtext0
+                            color: closeHover.containsMouse ? Qt.alpha(root.red, 0.7) : Qt.alpha(root.subtext0, 0.5)
                             Behavior on color { ColorAnimation { duration: 150 } } 
                         }
                     }
@@ -898,9 +916,13 @@ Item {
         // ==========================================
         // CONTENT AREA
         // ==========================================
-        Item {
+        Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            radius: root.s(12)
+            color: Qt.alpha(root.mantle, 0.4)
+            border.color: Qt.alpha(root.mauve, 0.04)
+            border.width: 1
             opacity: introContent
             scale: 0.95 + (0.05 * introContent)
             transform: Translate { y: root.s(20) * (1.0 - introContent) }
@@ -945,7 +967,7 @@ Item {
                         Layout.preferredHeight: root.s(180)
                         radius: root.s(16)
                         color: sysBoxMa.containsMouse ? Qt.alpha(root.surface0, 0.7) : Qt.alpha(root.surface0, 0.4)
-                        border.color: sysBoxMa.containsMouse ? root.ambientBlue : root.surface1
+                        border.color: sysBoxMa.containsMouse ? root.ambientMagenta : root.surface1
                         border.width: 1
                         clip: true
                         
@@ -956,8 +978,8 @@ Item {
                             width: root.s(250)
                             height: root.s(250)
                             radius: root.s(125)
-                            color: root.ambientBlue
-                            opacity: 0.15
+                            color: root.ambientMagenta
+                            opacity: 0.12
                             x: sysBoxMa.containsMouse ? parent.width * 0.7 : parent.width * 0.8
                             y: -root.s(50)
                             layer.enabled: true
@@ -969,8 +991,8 @@ Item {
                             width: root.s(200)
                             height: root.s(200)
                             radius: root.s(100)
-                            color: root.ambientPurple
-                            opacity: 0.15
+                            color: root.ambientAmethyst
+                            opacity: 0.12
                             x: sysBoxMa.containsMouse ? root.s(50) : -root.s(50)
                             y: root.s(20)
                             layer.enabled: true
@@ -1003,7 +1025,7 @@ Item {
                                     height: root.s(100)
                                     radius: root.s(50)
                                     color: "transparent"
-                                    border.color: Qt.alpha(root.ambientPurple, sysBoxMa.containsMouse ? 0.9 : 0.5)
+                                    border.color: Qt.alpha(root.mauve, sysBoxMa.containsMouse ? 0.9 : 0.4)
                                     border.width: root.s(4)
                                     scale: sysBoxMa.containsMouse ? 1.05 : 1.0
                                     
@@ -1155,7 +1177,7 @@ Item {
                         Layout.preferredHeight: root.s(50)
                         radius: root.s(10)
                         color: authorMa.containsMouse ? Qt.alpha(root.surface1, 0.6) : Qt.alpha(root.surface0, 0.4)
-                        border.color: authorMa.containsMouse ? root.mauve : root.surface1
+                        border.color: authorMa.containsMouse ? Qt.alpha(root.ambientAmethyst, 0.8) : root.surface1
                         border.width: authorMa.containsMouse ? 2 : 1
                         scale: authorMa.pressed ? 0.97 : (authorMa.containsMouse ? 1.02 : 1.0)
                         
@@ -1238,7 +1260,7 @@ Item {
                         Repeater {
                             model: [ 
                                 { name: "Settings", icon: "", color: "mauve", targetTab: 0, isToggle: true }, 
-                                { name: "Modules", icon: "󰣆", color: "blue", targetTab: 2, isToggle: false } 
+                                { name: "Modules", icon: "󰣆", color: "pink", targetTab: 2, isToggle: false } 
                             ]
                             
                             Rectangle {
@@ -1456,8 +1478,8 @@ Item {
                             Layout.preferredWidth: root.s(110)
                             Layout.preferredHeight: root.s(44)
                             radius: root.s(22)
-                            color: launchMa.containsMouse ? Qt.alpha(root.ambientBlue, 0.9) : Qt.alpha(root.ambientBlue, 0.7)
-                            border.color: root.ambientBlue
+                            color: launchMa.containsMouse ? Qt.alpha(root.ambientAmethyst, 0.85) : Qt.alpha(root.ambientAmethyst, 0.65)
+                            border.color: Qt.alpha(root.ambientAmethyst, 0.4)
                             border.width: 1
                             scale: launchMa.pressed ? 0.95 : (launchMa.containsMouse ? 1.05 : 1.0)
                             
@@ -1487,7 +1509,7 @@ Item {
                         Layout.fillHeight: true
                         radius: root.s(12)
                         color: root.surface0
-                        border.color: root.surface2
+                        border.color: Qt.alpha(root.mauve, 0.08)
                         border.width: 1
                         clip: true
                         
@@ -1529,7 +1551,6 @@ Item {
                             id: videoPreview
                             anchors.fill: parent
                             fillMode: VideoOutput.PreserveAspectCrop
-                            visible: true
                             opacity: 0
                             autoPlay: true
                             loops: MediaPlayer.Infinite
@@ -1632,7 +1653,7 @@ Item {
                             property bool isSelected: index === root.selectedModuleIndex
                             property bool isHimeno: model.target === "himeno"
                             color: isHimeno ? (isSelected ? Qt.rgba(0.8, 0.15, 0.15, 0.5) : (modMa.containsMouse ? Qt.rgba(0.8, 0.15, 0.15, 0.35) : Qt.rgba(0.8, 0.1, 0.1, 0.2))) : (isSelected ? root.surface1 : (modMa.containsMouse ? Qt.alpha(root.surface1, 0.5) : Qt.alpha(root.surface0, 0.4)))
-                            border.color: isHimeno ? (isSelected ? pulseColor : (modMa.containsMouse ? "#dd3333" : "#aa2222")) : (isSelected ? root.ambientBlue : (modMa.containsMouse ? root.surface2 : root.surface1))
+                            border.color: isHimeno ? (isSelected ? pulseColor : (modMa.containsMouse ? "#dd3333" : "#aa2222")) : (isSelected ? root.ambientMagenta : (modMa.containsMouse ? root.surface2 : root.surface1))
                             border.width: isSelected ? 2 : (isHimeno ? 2 : 1)
                             scale: isSelected ? 1.0 : (modMa.pressed ? 0.96 : (modMa.containsMouse ? (isHimeno ? 1.06 : 1.02) : 1.0))
                             
@@ -1673,7 +1694,7 @@ Item {
                                         height: root.s(28)
                                         radius: root.s(6)
                                         color: isHimeno ? Qt.rgba(0.8, 0.1, 0.1, 0.4) : Qt.alpha(root.base, 0.5)
-                                        Text { anchors.centerIn: parent; text: model.icon; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: isHimeno ? "#ff6666" : (isSelected ? root.ambientBlue : root.text) } 
+                                        Text { anchors.centerIn: parent; text: model.icon; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(14); color: isHimeno ? "#ff6666" : (isSelected ? root.ambientMagenta : root.text) } 
                                     } 
                                     Text { 
                                         text: model.title
@@ -1762,7 +1783,7 @@ Item {
                         Layout.preferredHeight: root.s(160)
                         radius: root.s(12)
                         color: Qt.alpha(root.surface0, 0.4)
-                        border.color: root.ambientPurple
+                        border.color: Qt.alpha(root.ambientAmethyst, 0.25)
                         border.width: 1
                         
                         RowLayout {
@@ -1780,8 +1801,10 @@ Item {
                                     width: root.s(60)
                                     height: root.s(60)
                                     radius: root.s(10)
-                                    color: root.surface1
-                                    Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(28); color: root.text } 
+                                    color: Qt.alpha(root.ambientAmethyst, 0.1)
+                                    border.color: Qt.alpha(root.ambientAmethyst, 0.2)
+                                    border.width: 1
+                                    Text { anchors.centerIn: parent; text: ""; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(28); color: root.ambientAmethyst } 
                                 } 
                                 Text { text: "Wallpaper"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(12); color: root.text; Layout.alignment: Qt.AlignHCenter } 
                                 MouseArea {
@@ -1829,8 +1852,8 @@ Item {
                                 width: root.s(180)
                                 height: root.s(90)
                                 radius: root.s(12)
-                                color: root.base
-                                border.color: root.ambientPurple
+                                color: Qt.alpha(root.base, 0.6)
+                                border.color: Qt.alpha(root.ambientAmethyst, 0.3)
                                 Layout.alignment: Qt.AlignVCenter
                                 
                                 SequentialAnimation on border.width { 
@@ -1843,7 +1866,7 @@ Item {
                                 ColumnLayout { 
                                     anchors.centerIn: parent
                                     spacing: root.s(8)
-                                    Text { text: "Matugen Core"; font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: root.s(15); color: root.ambientPurple; Layout.alignment: Qt.AlignHCenter } 
+                                    Text { text: "Matugen Core"; font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: root.s(15); color: root.ambientAmethyst; Layout.alignment: Qt.AlignHCenter } 
                                     RowLayout { 
                                         spacing: root.s(4)
                                         Layout.alignment: Qt.AlignHCenter
@@ -1911,8 +1934,10 @@ Item {
                                     width: root.s(60)
                                     height: root.s(60)
                                     radius: root.s(10)
-                                    color: root.surface1
-                                    Text { anchors.centerIn: parent; text: "󰏘"; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(28); color: root.text } 
+                                    color: Qt.alpha(root.ambientMagenta, 0.1)
+                                    border.color: Qt.alpha(root.ambientMagenta, 0.2)
+                                    border.width: 1
+                                    Text { anchors.centerIn: parent; text: "󰏘"; font.family: "Iosevka Nerd Font"; font.pixelSize: root.s(28); color: root.ambientMagenta } 
                                 } 
                                 Text { text: "Templates"; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: root.s(12); color: root.text; Layout.alignment: Qt.AlignHCenter } 
                             }
@@ -1993,13 +2018,13 @@ Item {
                         width: root.s(48)
                         height: root.s(48)
                         radius: root.s(14)
-                        color: Qt.alpha(root.peach, 0.15)
+                        color: Qt.alpha(root.ambientAmethyst, 0.12)
                         Text {
                             anchors.centerIn: parent
                             text: ""
                             font.family: "Iosevka Nerd Font"
                             font.pixelSize: root.s(26)
-                            color: root.peach
+                            color: root.ambientAmethyst
                         }
                     }
 
@@ -2017,8 +2042,8 @@ Item {
                         width: Math.min(root.s(360), parent.width)
                         height: root.s(50)
                         radius: root.s(12)
-                        color: detectBtn.containsMouse ? Qt.alpha(root.peach, 0.2) : Qt.alpha(root.surface0, 0.4)
-                        border.color: detectBtn.containsMouse ? root.peach : root.surface1
+                        color: detectBtn.containsMouse ? Qt.alpha(root.ambientAmethyst, 0.15) : Qt.alpha(root.surface0, 0.25)
+                        border.color: detectBtn.containsMouse ? Qt.alpha(root.ambientAmethyst, 0.5) : Qt.alpha(root.mauve, 0.05)
                         border.width: detectBtn.containsMouse ? 2 : 1
                         scale: detectBtn.pressed ? 0.95 : (detectBtn.containsMouse ? 1.02 : 1.0)
 
@@ -2225,9 +2250,9 @@ Item {
 
                         Repeater {
                             model: [
-                                { name: "GitHub", icon: "", color: "blue", url: "https://github.com/eprahemi" },
-                                { name: "Eprahemi", icon: "󰣇", color: "mauve", url: "https://github.com/eprahemi/WifeRice" },
-                                { name: "Wallpapers", icon: "", color: "peach", url: "https://wallvault.pages.dev/" }
+                                { name: "GitHub", icon: "", color: "mauve", url: "https://github.com/eprahemi" },
+                                { name: "Eprahemi", icon: "󰣇", color: "pink", url: "https://github.com/eprahemi/WifeRice" },
+                                { name: "Wallpapers", icon: "", color: "sapphire", url: "https://wallvault.pages.dev/" }
                             ]
 
                             Rectangle {
@@ -2399,13 +2424,13 @@ Item {
                             Layout.preferredWidth: root.s(48)
                             Layout.preferredHeight: root.s(48)
                             radius: root.s(12)
-                            color: Qt.alpha(root.green, 0.15)
+                            color: Qt.alpha(root.ambientAmethyst, 0.15)
                             Text {
                                 anchors.centerIn: parent
                                 text: "󰑖"
                                 font.family: "Iosevka Nerd Font"
                                 font.pixelSize: root.s(24)
-                                color: root.green
+                                color: root.ambientAmethyst
                             }
                         }
 
@@ -2434,8 +2459,8 @@ Item {
                             Layout.preferredWidth: root.s(140)
                             Layout.preferredHeight: root.s(44)
                             radius: root.s(22)
-                            color: checkMa.containsMouse ? Qt.alpha(root.green, 0.9) : Qt.alpha(root.green, 0.7)
-                            border.color: root.green
+                            color: checkMa.containsMouse ? Qt.alpha(root.ambientAmethyst, 0.85) : Qt.alpha(root.ambientAmethyst, 0.65)
+                            border.color: Qt.alpha(root.ambientAmethyst, 0.4)
                             border.width: 1
                             scale: checkMa.pressed ? 0.95 : (checkMa.containsMouse ? 1.05 : 1.0)
 
@@ -2812,13 +2837,13 @@ Item {
                             Layout.preferredWidth: root.s(40)
                             Layout.preferredHeight: root.s(40)
                             radius: root.s(10)
-                            color: Qt.alpha(root.mauve, 0.15)
+                            color: Qt.alpha(root.ambientAmethyst, 0.15)
                             Text {
                                 anchors.centerIn: parent
                                 text: "󰊟"
                                 font.family: "Iosevka Nerd Font"
                                 font.pixelSize: root.s(20)
-                                color: root.mauve
+                                color: root.ambientAmethyst
                             }
                         }
 
@@ -3008,7 +3033,7 @@ Item {
                             Layout.preferredHeight: root.s(36)
                             radius: root.s(8)
                             color: Qt.alpha(root.surface0, 0.4)
-                            border.color: reportTitle.activeFocus ? root.mauve : root.surface1
+                            border.color: reportTitle.activeFocus ? root.ambientAmethyst : root.surface1
                             border.width: 1
 
                             TextInput {
@@ -3055,7 +3080,7 @@ Item {
                             Layout.fillHeight: true
                             radius: root.s(8)
                             color: Qt.alpha(root.surface0, 0.4)
-                            border.color: reportDesc.activeFocus ? root.mauve : root.surface1
+                            border.color: reportDesc.activeFocus ? root.ambientAmethyst : root.surface1
                             border.width: 1
 
                             ScrollView {
@@ -3195,8 +3220,8 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: root.s(44)
                         radius: root.s(10)
-                        color: sendBtnMouse.containsMouse ? Qt.alpha(root.mauve, 0.9) : Qt.alpha(root.mauve, 0.75)
-                        border.color: root.mauve
+                        color: sendBtnMouse.containsMouse ? Qt.alpha(root.ambientAmethyst, 0.85) : Qt.alpha(root.ambientAmethyst, 0.7)
+                        border.color: Qt.alpha(root.ambientAmethyst, 0.4)
                         border.width: 1
                         scale: sendBtnMouse.pressed ? 0.95 : (sendBtnMouse.containsMouse ? 1.03 : 1.0)
 
@@ -3239,7 +3264,7 @@ Item {
                                 sendBtn.isSending = false;
                                 sendIcon.text = "󰊟";
                                 sendText.text = "Send Report";
-                                sendBtn.color = sendBtnMouse.containsMouse ? Qt.alpha(root.mauve, 0.9) : Qt.alpha(root.mauve, 0.75);
+                                sendBtn.color = sendBtnMouse.containsMouse ? Qt.alpha(root.ambientAmethyst, 0.85) : Qt.alpha(root.ambientAmethyst, 0.7);
                             }
                         }
 
@@ -3288,7 +3313,7 @@ Item {
                             id: titleFlashTimer
                             interval: 600
                             onTriggered: {
-                                titleInputRect.border.color = reportTitle.activeFocus ? root.mauve : root.surface1;
+                                titleInputRect.border.color = reportTitle.activeFocus ? root.ambientAmethyst : root.surface1;
                             }
                         }
 
@@ -3296,7 +3321,7 @@ Item {
                             id: descFlashTimer
                             interval: 600
                             onTriggered: {
-                                descInputRect.border.color = reportDesc.activeFocus ? root.mauve : root.surface1;
+                                descInputRect.border.color = reportDesc.activeFocus ? root.ambientAmethyst : root.surface1;
                             }
                         }
 
@@ -3328,18 +3353,20 @@ Item {
                             }
                             onEntered: {
                                 if (!sendBtn.isSending) {
-                                    sendBtn.color = Qt.alpha(root.mauve, 0.9);
+                                    sendBtn.color = Qt.alpha(root.ambientAmethyst, 0.85);
                                 }
                             }
                             onExited: {
                                 if (!sendBtn.isSending) {
-                                    sendBtn.color = Qt.alpha(root.mauve, 0.75);
+                                    sendBtn.color = Qt.alpha(root.ambientAmethyst, 0.7);
                                 }
                             }
                         }
                     }
                 }
             }
+
+
 
         }
 

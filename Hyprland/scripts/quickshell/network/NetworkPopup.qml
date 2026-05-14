@@ -54,6 +54,8 @@ Item {
     readonly property string cacheDir: Quickshell.env("XDG_RUNTIME_DIR") ? (Quickshell.env("XDG_RUNTIME_DIR") + "/qs_network") : (Quickshell.env("HOME") + "/.cache/qs_network")
     readonly property string modeFilePath: cacheDir + "/mode"
 
+    property string activeMode: "wifi"
+
     property bool ethPresent: false
     property bool wifiPresent: false
     property bool btPresent: false
@@ -188,8 +190,9 @@ Item {
     readonly property color sharedAccent: Qt.lighter(window.sapphire, 1.15) 
     readonly property color btAccent: window.mauve
 
-    property string activeMode: "bt"
-    readonly property color activeColor: activeMode === "bt" ? window.btAccent : window.sharedAccent
+    readonly property color wifiAccent: "#ff5262"
+
+    readonly property color activeColor: activeMode === "bt" ? window.btAccent : (activeMode === "wifi" ? window.wifiAccent : window.sharedAccent)
     readonly property color activeGradientSecondary: Qt.darker(window.activeColor, 1.25)
 
     property var busyTasks: ({})
@@ -348,6 +351,7 @@ Item {
     }
 
     onCurrentConnChanged: {
+        if (window.currentConn) pulseAnim.start();
         showInfoView = currentConn;
         if (currentConn) updateInfoNodes();
     }
@@ -445,6 +449,45 @@ Item {
     property string strongestWifiSsid: ""
     readonly property bool isWifiConn: !!window.wifiConnected && window.wifiConnected.ssid !== undefined
 
+    property var signalHistory: []
+    property int signalHistoryMax: 30
+
+    property real currentRxSpeed: 0
+    property real currentTxSpeed: 0
+    property var prevNetStats: ({ rx: 0, tx: 0, time: 0 })
+
+    Process {
+        id: speedPoller
+        command: ["bash", "-c", "cat /proc/net/dev | tail -n +3 | awk '{print $1,$2,$10}' | head -5"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var now = Date.now();
+                var lines = this.text.trim().split('\n');
+                var totalRx = 0, totalTx = 0;
+                for (var li = 0; li < lines.length; li++) {
+                    var parts = lines[li].trim().split(/\s+/);
+                    if (parts.length >= 3) {
+                        var iface = parts[0].replace(':', '');
+                        if (iface !== "lo") {
+                            totalRx += parseInt(parts[1]) || 0;
+                            totalTx += parseInt(parts[2]) || 0;
+                        }
+                    }
+                }
+                var stats = window.prevNetStats;
+                if (stats.time > 0 && stats.time < now) {
+                    var dt = (now - stats.time) / 1000;
+                    if (dt > 0) {
+                        window.currentRxSpeed = (totalRx - stats.rx) / dt;
+                        window.currentTxSpeed = (totalTx - stats.tx) / dt;
+                    }
+                }
+                window.prevNetStats = { rx: totalRx, tx: totalTx, time: now };
+            }
+        }
+    }
+    Timer { interval: 1000; running: true; repeat: true; triggeredOnStart: true; onTriggered: speedPoller.running = true }
+
     readonly property string targetWifiSsid: {
         let found = false;
         if (cache.lastWifiSsid !== "") {
@@ -532,6 +575,12 @@ Item {
             if (window.activeMode !== "eth") {
                 nodes.push({ id: "action_scan", name: "Scan Devices", icon: "󰍉", action: "Switch View", isInfoNode: true, isActionable: true, cmdStr: "TOGGLE_VIEW", parentIndex: -1 });
             }
+            if (window.currentConn && (window.activeMode === "eth" || window.activeMode === "wifi")) {
+                var rxStr = window.currentRxSpeed > 1048576 ? (window.currentRxSpeed / 1048576).toFixed(1) + " MB/s" : (window.currentRxSpeed > 1024 ? (window.currentRxSpeed / 1024).toFixed(0) + " KB/s" : window.currentRxSpeed.toFixed(0) + " B/s");
+                var txStr = window.currentTxSpeed > 1048576 ? (window.currentTxSpeed / 1048576).toFixed(1) + " MB/s" : (window.currentTxSpeed > 1024 ? (window.currentTxSpeed / 1024).toFixed(0) + " KB/s" : window.currentTxSpeed.toFixed(0) + " B/s");
+                nodes.push({ id: "speed_rx", name: "↓ " + rxStr, icon: "󰇚", action: "Download", isInfoNode: true, isActionable: false, parentIndex: -1 });
+                nodes.push({ id: "speed_tx", name: "↑ " + txStr, icon: "󰇜", action: "Upload", isInfoNode: true, isActionable: false, parentIndex: -1 });
+            }
         }
         
         if (window.isListLocked && window.activeMode !== "eth") window.nextInfoList = nodes;
@@ -615,6 +664,13 @@ Item {
 
             if (JSON.stringify(window.wifiConnected) !== JSON.stringify(newConnected)) {
                 window.wifiConnected = newConnected;
+            }
+
+            if (window.activeMode === "wifi" && isNowWifiConn && newConnected && newConnected.signal !== undefined) {
+                let hist = window.signalHistory.slice();
+                hist.push(parseInt(newConnected.signal));
+                if (hist.length > window.signalHistoryMax) hist.shift();
+                window.signalHistory = hist;
             }
             
             if (newNetworks.length > 0) {
@@ -813,6 +869,19 @@ Item {
         from: 0; to: Math.PI * 2; duration: 200000; loops: Animation.Infinite; running: true
     }
 
+    property real glowFlicker: 0
+    Timer { interval: 120; running: true; repeat: true; onTriggered: glowFlicker = Math.random() * 0.025 }
+
+    property real pulseRing: 0
+    SequentialAnimation {
+        id: pulseAnim; running: false
+        NumberAnimation { target: window; property: "pulseRing"; to: 1; duration: 500; easing.type: Easing.OutQuad }
+        NumberAnimation { target: window; property: "pulseRing"; to: 0; duration: 700; easing.type: Easing.InQuad }
+    }
+    Timer {
+        interval: 2800; running: window.currentPower && window.currentConn; repeat: true
+        onTriggered: pulseAnim.start()
+    }
     property real introState: 0.0
     Behavior on introState { NumberAnimation { duration: 1500; easing.type: Easing.OutCubic } }
 
@@ -834,6 +903,21 @@ Item {
         }
     }
 
+    component TypewriterText : Text {
+        id: twRoot
+        property string fullText: ""
+        property int charIndex: 0
+        property int typingSpeed: 60
+        text: fullText.substring(0, charIndex)
+        Timer {
+            id: twTimer
+            interval: twRoot.typingSpeed; running: twRoot.charIndex < twRoot.fullText.length; repeat: true
+            onTriggered: twRoot.charIndex++
+        }
+        onFullTextChanged: { twRoot.charIndex = 0; }
+        onVisibleChanged: if (!visible) { twRoot.charIndex = 0; } else if (twRoot.fullText.length > 0) { twRoot.charIndex = 0; }
+    }
+
     Item {
         anchors.fill: parent
 
@@ -849,7 +933,7 @@ Item {
                 width: parent.width * 0.8; height: width; radius: width / 2
                 x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
                 y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
-                opacity: window.currentPower ? 0.08 : 0.02
+                opacity: window.currentPower ? 0.08 + window.glowFlicker : 0.02
                 color: window.currentConn ? window.activeColor : window.surface2
                 Behavior on color { ColorAnimation { duration: 1000 } }
                 Behavior on opacity { NumberAnimation { duration: 1000 } }
@@ -860,7 +944,7 @@ Item {
                 width: parent.width * 0.9; height: width; radius: width / 2
                 x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
                 y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
-                opacity: window.currentPower ? 0.06 : 0.01
+                opacity: window.currentPower ? 0.06 + window.glowFlicker : 0.01
                 color: window.currentConn ? window.activeGradientSecondary : window.surface1
                 Behavior on color { ColorAnimation { duration: 1000 } }
                 Behavior on opacity { NumberAnimation { duration: 1000 } }
@@ -937,8 +1021,8 @@ Item {
                     ctx.lineJoin = "round";
                     ctx.lineCap = "round";
 
-                    var tWave1 = time * 2.5;
-                    var tWave2 = time * -1.5;
+                    var tWave1 = time * 1.5;
+                    var tWave2 = time * -1.0;
 
                     for (var i = 0; i < orbitRepeater.count; i++) {
                         var item = orbitRepeater.itemAt(i);
@@ -947,7 +1031,7 @@ Item {
                         var targetX = item.x + item.width / 2;
                         var targetY = item.y + item.height / 2;
 
-                        function drawStrands(startX, startY, parentFade, parentWidth) {
+                        var drawStrands = function(startX, startY, parentFade, parentWidth) {
                             var dx = targetX - startX;
                             var dy = targetY - startY;
                             var fullDist = Math.sqrt(dx * dx + dy * dy);
@@ -983,7 +1067,7 @@ Item {
                                 var t = j / steps;
                                 var currentDist = drawDist * t;
                                 var envelope = Math.sin(t * Math.PI);
-                                var offset = Math.sin(tWave1 + t * 6) * s(6) * envelope + ((Math.random() - 0.5) * s(5.0) * distanceFactor);
+                                var offset = Math.sin(tWave1 + t * 3) * s(4) * envelope + ((Math.random() - 0.5) * s(3.0) * distanceFactor);
                                 ctx.lineTo(sX + cosA * currentDist + perpX * offset, sY + sinA * currentDist + perpY * offset);
                             }
                             ctx.lineWidth = dynamicLineWidthGlow;
@@ -1002,7 +1086,7 @@ Item {
                                 var tk = k / steps;
                                 var currentDistK = drawDist * tk;
                                 var envelopeK = Math.sin(tk * Math.PI);
-                                var offsetK = Math.cos(tWave2 + tk * 8) * s(12) * envelopeK + ((Math.random() - 0.5) * s(3.0) * distanceFactor);
+                                var offsetK = Math.cos(tWave2 + tk * 4) * s(6) * envelopeK + ((Math.random() - 0.5) * s(1.5) * distanceFactor);
                                 ctx.lineTo(sX + cosA * currentDistK + perpX * offsetK, sY + sinA * currentDistK + perpY * offsetK);
                             }
                             ctx.lineWidth = dynamicLineWidthCore * 1.5;
@@ -1025,6 +1109,40 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            Canvas {
+                id: rippleCanvas
+                anchors.fill: parent
+                anchors.bottomMargin: window.s(80)
+                z: 0.5
+                opacity: window.pulseRing > 0.01 ? 1.0 : 0.0
+                visible: opacity > 0.01
+                onPaint: {
+                    var ctx = getContext("2d");
+                    var s = window.s;
+                    ctx.clearRect(0, 0, width, height);
+                    if (window.pulseRing <= 0.01) return;
+                    var cx = width / 2, cy = height / 2;
+                    var maxR = Math.min(width, height) * 0.4;
+                    var r = maxR * window.pulseRing;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = window.activeColor.toString();
+                    ctx.lineWidth = s(3) * (1 - window.pulseRing * 0.8);
+                    ctx.globalAlpha = (1 - window.pulseRing) * 0.3;
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = s(1) * (1 - window.pulseRing * 0.8);
+                    ctx.globalAlpha = (1 - window.pulseRing) * 0.15;
+                    ctx.stroke();
+                }
+                Connections {
+                    target: window
+                    function onPulseRingChanged() { rippleCanvas.requestPaint() }
                 }
             }
 
@@ -1072,7 +1190,7 @@ Item {
                         y: window.activeMode === "eth" ? (orbitContainer.height / 2 - height / 2) : ((orbitContainer.height / 2 - height / 2) + (Math.sin(coreOrbitAngle) * myOrbitRadiusY * multiShift * activeTransition))
                         
                         opacity: activeTransition
-                        scale: centralCore.bumpScale * (0.8 + 0.2 * activeTransition)
+                        scale: centralCore.batteryPulse * centralCore.bumpScale * (0.8 + 0.2 * activeTransition)
                         visible: opacity > 0.01
 
                         property string myId: myDevice ? (window.activeMode === "wifi" ? myDevice.ssid : (window.activeMode === "eth" ? myDevice.id : myDevice.mac)) : "unknown"
@@ -1106,7 +1224,15 @@ Item {
                             property real bumpScale: 1.0
                             property bool isDangerState: coreMa.containsMouse || disconnectFill > 0 || isMyDisconnecting
 
-                            SequentialAnimation on bumpScale {
+                             property real batteryPulseTime: 0
+                             Timer { interval: 50; running: true; repeat: true; onTriggered: centralCore.batteryPulseTime += 0.05 }
+                             readonly property real batteryPulse: {
+                                 var bat = coreContainer.myDevice && coreContainer.myDevice.battery ? coreContainer.myDevice.battery : -1;
+                                 if (bat < 0 || window.activeMode !== "bt") return 1.0;
+                                 return 1.0 + Math.sin(centralCore.batteryPulseTime * (2 + (100 - bat) / 25)) * 0.03;
+                             }
+
+                             SequentialAnimation on bumpScale {
                                 id: coreBumpAnim
                                 running: false
                                 NumberAnimation { to: 1.15; duration: 200; easing.type: Easing.OutBack }
@@ -1302,7 +1428,7 @@ Item {
                                 opacity: visible ? 1.0 : 0.0
                                 Behavior on opacity { NumberAnimation { duration: 300 } }
                                 Text { Layout.alignment: Qt.AlignHCenter; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(48); color: window.overlay0; text: "󰈂" }
-                                Text { Layout.alignment: Qt.AlignHCenter; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(14); color: window.overlay0; text: window.currentPowerPending ? (window.expectedEthPower === "on" ? "Powering On..." : "Powering Off...") : "Disconnected" }
+                                TypewriterText { Layout.alignment: Qt.AlignHCenter; font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(14); typingSpeed: 40; color: window.overlay0; fullText: window.currentPowerPending ? (window.expectedEthPower === "on" ? "Powering On..." : "Powering Off...") : "Disconnected" }
                             }
 
                             Item {
@@ -1391,11 +1517,12 @@ Item {
                                         elide: Text.ElideRight
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
-                                    Text {
+                                    TypewriterText {
                                         Layout.alignment: Qt.AlignHCenter
                                         font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(11)
+                                        typingSpeed: 40
                                         color: isMyDisconnecting ? window.overlay1 : (coreMa.containsMouse ? window.crust : "#99000000")
-                                        text: isMyDisconnecting ? "Disconnecting..." : (centralCore.disconnectFill > 0.01 ? "Hold..." : "Connected")
+                                        fullText: isMyDisconnecting ? "Disconnecting..." : (centralCore.disconnectFill > 0.01 ? "Hold..." : "Connected")
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
                                 }
@@ -1432,11 +1559,12 @@ Item {
                                             text: coreContainer.myDevice ? (window.activeMode === "wifi" ? coreContainer.myDevice.ssid : coreContainer.myDevice.name) : ""
                                             elide: Text.ElideRight
                                         }
-                                        Text {
+                                        TypewriterText {
                                             Layout.alignment: Qt.AlignHCenter
                                             font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(11)
+                                            typingSpeed: 40
                                             color: window.text
-                                            text: isMyDisconnecting ? "Disconnecting..." : (centralCore.disconnectFill > 0.01 ? "Hold..." : "Connected")
+                                            fullText: isMyDisconnecting ? "Disconnecting..." : (centralCore.disconnectFill > 0.01 ? "Hold..." : "Connected")
                                         }
                                     }
                                 }
@@ -1740,25 +1868,25 @@ Item {
                                     color: "transparent"
                                     border.width: 1
                                     border.color: floatCard.isFailed ? window.red : window.surface2
-                                    visible: !isHighlighted && !locksList
+                                    visible: !floatCard.isHighlighted && !floatCard.locksList
                                     Behavior on border.color { ColorAnimation { duration: 300 } }
                                 }
 
                                 Rectangle {
                                     anchors.fill: parent
                                     radius: window.s(14)
-                                    opacity: locksList || isHighlighted ? 1.0 : 0.0
+                                    opacity: floatCard.locksList || floatCard.isHighlighted ? 1.0 : 0.0
                                     color: "transparent"
-                                    border.width: isHighlighted && !locksList ? 1 : window.s(2)
+                                    border.width: floatCard.isHighlighted && !floatCard.locksList ? 1 : window.s(2)
                                     border.color: floatCard.isFailed ? window.red : "transparent"
                                     Behavior on opacity { NumberAnimation { duration: 250 } }
                                     
                                     Rectangle {
                                         anchors.fill: parent
-                                        anchors.margins: isHighlighted && !locksList ? 1 : window.s(2)
+                                        anchors.margins: floatCard.isHighlighted && !floatCard.locksList ? 1 : window.s(2)
                                         radius: window.s(12)
                                         color: window.base
-                                        opacity: locksList ? 0.9 : 1.0
+                                        opacity: floatCard.locksList ? 0.9 : 1.0
                                     }
                                     
                                     gradient: Gradient {
@@ -1918,11 +2046,12 @@ Item {
                                             }
                                         }
                                         
-                                        Text {
+                                        TypewriterText {
                                             font.family: "JetBrains Mono"
                                             font.pixelSize: window.s(10)
+                                            typingSpeed: 40
                                             color: floatCard.isFailed ? window.maroon : (floatCard.isMyBusy ? window.activeColor : window.overlay0)
-                                            text: floatCard.isFailed ? "Connection Failed" : (floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? "Hold..." : action))
+                                            fullText: floatCard.isFailed ? "Connection Failed" : (floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? "Hold..." : action))
                                             Behavior on color { ColorAnimation { duration: 200 } }
                                         }
                                     }
@@ -1968,9 +2097,10 @@ Item {
                                                     font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(13); color: window.crust 
                                                 }
                                             }
-                                            Text {
+                                            TypewriterText {
                                                 font.family: "JetBrains Mono"; font.pixelSize: window.s(10); color: window.crust
-                                                text: floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? "Hold..." : action)
+                                                typingSpeed: 40
+                                                fullText: floatCard.isMyBusy ? "Connecting..." : (floatCard.renderFill > 0.1 && floatCard.renderFill < 1.0 ? "Hold..." : action)
                                             }
                                         }
                                     }
@@ -2053,6 +2183,43 @@ Item {
                         }
                     }
                 }
+            }
+
+            Canvas {
+                id: sparklineCanvas
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: window.s(20)
+                width: window.s(120); height: window.s(28)
+                z: 2
+                opacity: window.signalHistory.length > 1 && window.activeMode === "wifi" && window.currentConn ? 1.0 : 0.0
+                visible: opacity > 0.01
+                Behavior on opacity { NumberAnimation { duration: 300 } }
+                onPaint: {
+                    var ctx = getContext("2d");
+                    var s = window.s;
+                    ctx.clearRect(0, 0, width, height);
+                    var hist = window.signalHistory;
+                    if (hist.length < 2) return;
+                    var minSig = 0, maxSig = 100;
+                    for (var si = 0; si < hist.length; si++) { if (hist[si] < minSig) minSig = hist[si]; if (hist[si] > maxSig) maxSig = hist[si]; }
+                    var range = Math.max(1, maxSig - minSig);
+                    ctx.beginPath();
+                    for (var si = 0; si < hist.length; si++) {
+                        var x = (si / (hist.length - 1)) * width;
+                        var y = height - ((hist[si] - minSig) / range) * (height - s(4)) - s(2);
+                        if (si === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    ctx.strokeStyle = window.wifiAccent.toString();
+                    ctx.lineWidth = s(1.5);
+                    ctx.globalAlpha = 0.6;
+                    ctx.stroke();
+                    ctx.globalAlpha = 0.15;
+                    ctx.lineWidth = s(4);
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+                Timer { interval: 1000; running: parent.opacity > 0.01; repeat: true; onTriggered: sparklineCanvas.requestPaint() }
+                Connections { target: window; function onSignalHistoryChanged() { sparklineCanvas.requestPaint() } }
             }
 
             Rectangle {
@@ -2157,8 +2324,15 @@ Item {
                         visible: window.wifiPresent
                         radius: window.s(10)
                         
-                        color: window.activeMode === "wifi" ? "transparent" : (wifiTabMa.containsMouse ? window.surface1 : "transparent")
+                        color: window.activeMode === "wifi" ? Qt.alpha(window.wifiAccent, 0.2) : (wifiTabMa.containsMouse ? window.surface1 : "transparent")
                         Behavior on color { ColorAnimation { duration: 200 } }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.radius
+                            color: Qt.alpha(window.wifiAccent, 0.08)
+                            visible: window.activeMode === "wifi"
+                        }
 
                         RowLayout {
                             anchors.centerIn: parent
