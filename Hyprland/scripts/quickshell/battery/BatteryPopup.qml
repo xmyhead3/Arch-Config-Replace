@@ -67,6 +67,11 @@ Item {
     property string currentUserName: ""
     
     property bool dndEnabled: false
+    property bool clickRippleActive: false
+    property real clickRippleTime: 0
+    property bool isDraggingCore: false
+    property real dragStartY: 0
+    property real dragStartBrightness: 0
 
     // State object for collapsible notification groups
     property var collapsedGroups: ({})
@@ -121,6 +126,14 @@ Item {
     
     onAnimCapacityChanged: batCanvas.requestPaint()
     onBatColorStartChanged: batCanvas.requestPaint()
+
+    Timer {
+        id: liquidTimer
+        interval: 33
+        running: true
+        repeat: true
+        onTriggered: batCanvas.requestPaint()
+    }
 
     // --- INIT DND STATE FROM CACHE ---
     Process {
@@ -799,16 +812,31 @@ Item {
                         transform: Translate { y: window.s(25) * (1 - introCore) }
                         scale: 0.9 + (0.1 * introCore)
 
-                        // CLEAN OUTSIDE GLOW HALO
+                        // AMETHYST GLOW HALOS
+                        Rectangle {
+                            anchors.centerIn: centralCore
+                            width: centralCore.width + window.s(80)
+                            height: width
+                            radius: width / 2
+                            color: window.mauve
+                            opacity: 0.06
+                            z: 0
+                            SequentialAnimation on scale {
+                                loops: Animation.Infinite; running: true
+                                NumberAnimation { to: 1.04; duration: 3000; easing.type: Easing.InOutSine }
+                                NumberAnimation { to: 1.0; duration: 3000; easing.type: Easing.InOutSine }
+                            }
+                        }
                         Rectangle {
                             anchors.centerIn: centralCore
                             width: centralCore.width + window.s(45)
                             height: width
                             radius: width / 2
                             color: centralCore.isDangerState ? window.red : window.ambientPrimary
-                            opacity: centralCore.isDangerState ? 0.25 : 0.15
-                            z: 0 
+                            opacity: (centralCore.isDangerState ? 0.25 : 0.15) + (heroMa.containsMouse ? 0.12 : 0.0)
+                            z: 0
                             Behavior on color { ColorAnimation { duration: 400 } }
+                            Behavior on opacity { NumberAnimation { duration: 300 } }
                             SequentialAnimation on scale {
                                 loops: Animation.Infinite; running: true
                                 NumberAnimation { to: heroMa.containsMouse ? 1.15 : 1.08; duration: heroMa.containsMouse ? 800 : 2000; easing.type: Easing.InOutSine }
@@ -824,7 +852,7 @@ Item {
                             anchors.verticalCenterOffset: window.s(-70)
                             radius: width / 2
                             z: 1
-                            
+
                             property bool isDangerState: !window.isCharging && window.batCapacity < 15
                             
                             SequentialAnimation on scale {
@@ -842,9 +870,12 @@ Item {
                                 }
                             }
 
+                            border.color: Qt.rgba(0.7, 0.53, 1.0, 0.15)
+                            border.width: 1
+
                             gradient: Gradient {
                                 orientation: Gradient.Vertical
-                                GradientStop { position: 0.0; color: window.surface0 }
+                                GradientStop { position: 0.0; color: window.surface1 }
                                 GradientStop { position: 1.0; color: window.base }
                             }
 
@@ -901,6 +932,217 @@ Item {
                                         var ctx = getContext("2d");
                                         ctx.clearRect(0, 0, width, height);
                                         
+                                        // LIQUID WAVE FILL (rotated space: y=0 = visual bottom)
+                                        var lt = Date.now() / 1500;
+                                        var liqPct = window.animCapacity / 100;
+                                        var liqSurface = height * liqPct;
+                                        var turbulence = 0.5 + 0.5 * (Math.sin(lt * 2.7) * Math.sin(lt * 1.3 + 1) * Math.cos(lt * 0.9 + 2));
+                                        var waveAmp = window.s(window.animCapacity < 20 && !window.isCharging ? 10 : 4) * (0.8 + 0.3 * turbulence);
+                                        var waveSteps = 24;
+                                        var ccx = width / 2, ccy = height / 2;
+                                        var ringR = (width / 2) - window.s(18);
+
+                                        var wf = function(wi) {
+                                            return (Math.sin(lt * 1.5 + wi * 0.5) * 0.5
+                                                  + Math.sin(lt + wi * 0.3) * 0.3
+                                                  + Math.sin(lt * 0.5 + wi * 0.7) * 0.2) * waveAmp;
+                                        };
+
+                                        var liqGrad = ctx.createLinearGradient(0, liqSurface + waveAmp, 0, 0);
+                                        liqGrad.addColorStop(0, Qt.lighter(window.batColorStart, 1.15).toString());
+                                        liqGrad.addColorStop(0.3, window.mauve.toString());
+                                        liqGrad.addColorStop(0.6, window.batColorStart.toString());
+                                        liqGrad.addColorStop(1, Qt.darker(window.batColorEnd, 1.25).toString());
+
+                                        ctx.save();
+                                        ctx.beginPath();
+                                        ctx.arc(ccx, ccy, ringR, 0, Math.PI * 2);
+                                        ctx.clip();
+
+                                        // depth layers
+                                        if (liqPct > 0.02) {
+                                            var dlAlphas = [0.06, 0.04];
+                                            var dlSpeeds = [0.6, 0.8];
+                                            var dlAmps = [waveAmp * 0.7, waveAmp * 0.5];
+                                            var dlOffs = [0.3, 0.6];
+                                            for (var di = 0; di < 2; di++) {
+                                                var ds = Math.min(1, liqPct * (1 + dlOffs[di]));
+                                                var dy = height * ds;
+                                                ctx.beginPath();
+                                                ctx.moveTo(0, height);
+                                                ctx.lineTo(0, dy + Math.sin(lt * dlSpeeds[di]) * dlAmps[di]);
+                                                for (var dxi = 1; dxi <= waveSteps; dxi++) {
+                                                    var dwf = (Math.sin(lt * dlSpeeds[di] * 1.5 + dxi * 0.5) * 0.5
+                                                             + Math.sin(lt * dlSpeeds[di] + dxi * 0.3) * 0.3) * dlAmps[di];
+                                                    ctx.lineTo((dxi / waveSteps) * width, dy + dwf);
+                                                }
+                                                ctx.lineTo(width, height);
+                                                ctx.closePath();
+                                                ctx.fillStyle = Qt.darker(window.batColorStart, 1.3 + di * 0.2).toString();
+                                                ctx.globalAlpha = dlAlphas[di];
+                                                ctx.fill();
+                                            }
+                                            ctx.globalAlpha = 1.0;
+                                        }
+
+                                        ctx.fillStyle = liqGrad;
+                                        ctx.beginPath();
+                                        ctx.moveTo(0, 0);
+                                        ctx.lineTo(0, liqSurface + wf(0));
+                                        for (var li = 1; li <= waveSteps; li++) {
+                                            ctx.lineTo((li / waveSteps) * width, liqSurface + wf(li));
+                                        }
+                                        ctx.lineTo(width, 0);
+                                        ctx.closePath();
+                                        ctx.fill();
+
+                                        // specular highlight band
+                                        ctx.fillStyle = liqGrad;
+                                        ctx.globalAlpha = 0.25;
+                                        ctx.beginPath();
+                                        ctx.moveTo(0, liqSurface + wf(0) - window.s(6));
+                                        for (var sj = 0; sj <= waveSteps; sj++) {
+                                            ctx.lineTo((sj / waveSteps) * width, liqSurface + wf(sj) - window.s(6));
+                                        }
+                                        ctx.lineTo(width, liqSurface + wf(waveSteps));
+                                        ctx.lineTo(0, liqSurface + wf(0));
+                                        ctx.closePath();
+                                        ctx.fill();
+                                        ctx.globalAlpha = 1.0;
+
+                                        // liquid shimmer band
+                                        var shimmerX = ((lt * 0.3) % 1.0) * width;
+                                        var shimmerW = window.s(15);
+                                        var shimmerIdx = Math.max(0, Math.min(waveSteps, waveSteps * (shimmerX / width)));
+                                        var shimmerYOff = wf(shimmerIdx);
+                                        ctx.beginPath();
+                                        ctx.moveTo(shimmerX - shimmerW, Math.max(0, liqSurface + shimmerYOff - window.s(20)));
+                                        ctx.lineTo(shimmerX + shimmerW, Math.max(0, liqSurface + shimmerYOff - window.s(20)));
+                                        ctx.lineTo(shimmerX + shimmerW + window.s(5), Math.max(0, liqSurface + shimmerYOff + window.s(5)));
+                                        ctx.lineTo(shimmerX - shimmerW - window.s(5), Math.max(0, liqSurface + shimmerYOff + window.s(5)));
+                                        ctx.closePath();
+                                        ctx.fillStyle = "#ffffff";
+                                        ctx.globalAlpha = 0.06 + 0.04 * (0.5 + 0.5 * Math.sin(lt * 0.5));
+                                        ctx.fill();
+                                        ctx.globalAlpha = 1.0;
+
+                                        // surface foam
+                                        var foamCount = 10;
+                                        for (var fi = 0; fi < foamCount; fi++) {
+                                            var ffx = (fi / foamCount) * width + Math.sin(lt * 0.5 + fi) * window.s(8);
+                                            var ffwf = wf(Math.max(0, Math.min(waveSteps, waveSteps * (ffx / width))));
+                                            var ffy = liqSurface + ffwf - window.s(1 + Math.sin(lt + fi * 1.7) * 1.5);
+                                            var ffs = window.s(1 + Math.sin(lt * 0.7 + fi * 2.3) * 0.8);
+                                            ctx.beginPath();
+                                            ctx.arc(ffx, ffy, ffs, 0, Math.PI * 2);
+                                            ctx.fillStyle = window.batColorEnd.toString();
+                                            ctx.globalAlpha = 0.15 + 0.1 * Math.sin(lt * 0.5 + fi);
+                                            ctx.fill();
+                                        }
+                                        ctx.globalAlpha = 1.0;
+
+                                        // floating embers
+                                        var emberCount = 5;
+                                        for (var ei = 0; ei < emberCount; ei++) {
+                                            var ePhase = ((lt * 0.12 + ei * 0.55) % 1.0);
+                                            var ex = ccx + Math.sin(lt * 0.3 + ei * 1.3) * ringR * 0.45;
+                                            var ey = ccy + ringR * 0.6 - ePhase * ringR * 1.2;
+                                            var es = window.s(1 + Math.sin(lt * 0.4 + ei * 2.0) * 0.8);
+                                            var eAlpha = Math.min(ePhase * 2, (1 - ePhase) * 2);
+                                            eAlpha = Math.min(eAlpha, 0.6);
+                                            ctx.beginPath();
+                                            ctx.arc(ex, ey, es, 0, Math.PI * 2);
+                                            ctx.fillStyle = window.mauve.toString();
+                                            ctx.globalAlpha = eAlpha * 0.6;
+                                            ctx.fill();
+                                            ctx.beginPath();
+                                            ctx.arc(ex, ey, es * 2.5, 0, Math.PI * 2);
+                                            ctx.fillStyle = window.mauve.toString();
+                                            ctx.globalAlpha = eAlpha * 0.15;
+                                            ctx.fill();
+                                        }
+                                        ctx.globalAlpha = 1.0;
+
+                                        // pulse ripples
+                                        var rippleIntervals = [3.0, 4.2];
+                                        for (var ri = 0; ri < rippleIntervals.length; ri++) {
+                                            var rPhase = ((lt / rippleIntervals[ri]) % 1.0);
+                                            if (rPhase < 0.35) {
+                                                var rr = (rPhase / 0.35) * ringR;
+                                                var ra = (1 - rPhase / 0.35) * 0.12;
+                                                ctx.beginPath();
+                                                ctx.arc(ccx, ccy, rr, 0, Math.PI * 2);
+                                                ctx.strokeStyle = window.mauve.toString();
+                                                ctx.lineWidth = window.s(1.5);
+                                                ctx.globalAlpha = ra;
+                                                ctx.stroke();
+                                            }
+                                        }
+                                        ctx.globalAlpha = 1.0;
+
+                                        // click ripple
+                                        if (window.clickRippleActive) {
+                                            var crPhase = 1.0 - (Date.now() - window.clickRippleTime) / 800;
+                                            if (crPhase > 0) {
+                                                var crr = (1 - crPhase) * ringR;
+                                                var cra = crPhase * 0.25;
+                                                ctx.beginPath();
+                                                ctx.arc(ccx, ccy, crr, 0, Math.PI * 2);
+                                                ctx.strokeStyle = window.mauve.toString();
+                                                ctx.lineWidth = window.s(3);
+                                                ctx.globalAlpha = cra;
+                                                ctx.stroke();
+                                            }
+                                        }
+                                        ctx.globalAlpha = 1.0;
+
+                                        // lava lamp blobs
+                                        var blbTime = Date.now() / 2000;
+                                        var blbColors = [window.ambientPrimary, window.ambientSecondary, window.mauve];
+                                        for (var bi = 0; bi < 3; bi++) {
+                                            var bx = ccx + Math.sin(blbTime * 0.5 + bi * 2.094) * ringR * 0.35;
+                                            var by = ccy + Math.cos(blbTime * 0.7 + bi * 2.094) * ringR * 0.25 + window.s(10);
+                                            var br = window.s(18 + Math.sin(blbTime + bi * 2.094) * 6);
+                                            var bg = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+                                            bg.addColorStop(0, Qt.lighter(blbColors[bi % 3], 1.3).toString());
+                                            bg.addColorStop(1, blbColors[bi % 3].toString());
+                                            ctx.beginPath();
+                                            ctx.arc(bx, by, br, 0, Math.PI * 2);
+                                            ctx.fillStyle = bg;
+                                            ctx.globalAlpha = 0.3 + 0.15 * Math.sin(blbTime + bi);
+                                            ctx.fill();
+                                        }
+                                        ctx.globalAlpha = 1.0;
+
+                                        // charging bubbles
+                                        if (window.isCharging) {
+                                            var bbTime = Date.now() / 1000;
+                                            var bbCount = 8;
+                                            for (var bu = 0; bu < bbCount; bu++) {
+                                                var bo = (bu / bbCount) * 3.0;
+                                                var bp = ((bbTime * 0.8 + bo) % 3.0) / 3.0;
+                                                var by2 = ccy + ringR - (bp * ringR * 2);
+                                                var bx2 = ccx + Math.sin(bbTime * 1.2 + bu * 0.8) * ringR * 0.3;
+                                                var bs = window.s(2 + Math.sin(bu + bbTime * 0.5) * 1.5);
+                                                var ba = (1 - bp) * 0.5;
+                                                if (by2 > ccy - ringR && by2 < ccy + ringR) {
+                                                    ctx.beginPath();
+                                                    ctx.arc(bx2, by2, bs, 0, Math.PI * 2);
+                                                    ctx.fillStyle = window.batColorEnd.toString();
+                                                    ctx.globalAlpha = ba;
+                                                    ctx.fill();
+                                                    ctx.beginPath();
+                                                    ctx.arc(bx2 - bs * 0.3, by2 - bs * 0.3, bs * 0.3, 0, Math.PI * 2);
+                                                    ctx.fillStyle = "#ffffff";
+                                                    ctx.globalAlpha = ba * 0.5;
+                                                    ctx.fill();
+                                                }
+                                            }
+                                        }
+                                        ctx.globalAlpha = 1.0;
+                                        ctx.restore();
+
+                                        // RING
                                         var centerX = width / 2;
                                         var centerY = height / 2;
                                         var radius = (width / 2) - window.s(18); 
@@ -913,9 +1155,27 @@ Item {
                                         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
                                         ctx.strokeStyle = window.surface1;
                                         ctx.stroke();
+
+                                        // Amethyst crystal under-glow ring
+                                        ctx.lineWidth = window.s(6);
+                                        ctx.beginPath();
+                                        ctx.arc(centerX, centerY, radius + window.s(3), 0, 2 * Math.PI);
+                                        ctx.strokeStyle = window.mauve.toString();
+                                        ctx.globalAlpha = 0.12;
+                                        ctx.stroke();
+                                        ctx.globalAlpha = 1.0;
+
+                                        ctx.lineWidth = window.s(6);
+                                        ctx.beginPath();
+                                        ctx.arc(centerX, centerY, radius - window.s(3), 0, 2 * Math.PI);
+                                        ctx.strokeStyle = window.mauve.toString();
+                                        ctx.globalAlpha = 0.08;
+                                        ctx.stroke();
+                                        ctx.globalAlpha = 1.0;
                                         
                                         var fillGrad = ctx.createLinearGradient(0, height, width, 0);
-                                        fillGrad.addColorStop(0, window.batColorStart.toString());
+                                        fillGrad.addColorStop(0, window.mauve.toString());
+                                        fillGrad.addColorStop(0.5, window.batColorStart.toString());
                                         fillGrad.addColorStop(1, window.batColorEnd.toString());
 
                                         ctx.globalAlpha = 1.0;
@@ -924,7 +1184,23 @@ Item {
                                         ctx.arc(centerX, centerY, radius, 0, endAngle);
                                         ctx.strokeStyle = fillGrad;
                                         ctx.stroke();
-                                        
+
+                                        // ring plasma sweep
+                                        var plasmaAngle = (lt * 0.4) % (Math.PI * 2);
+                                        ctx.beginPath();
+                                        ctx.arc(centerX, centerY, radius, plasmaAngle - 0.4, plasmaAngle + 0.4);
+                                        ctx.lineWidth = window.s(18);
+                                        ctx.strokeStyle = window.mauve.toString();
+                                        ctx.globalAlpha = 0.12 + 0.05 * Math.sin(lt * 0.3);
+                                        ctx.stroke();
+                                        ctx.beginPath();
+                                        ctx.arc(centerX, centerY, radius, plasmaAngle - 0.1, plasmaAngle + 0.1);
+                                        ctx.lineWidth = window.s(22);
+                                        ctx.strokeStyle = window.batColorEnd.toString();
+                                        ctx.globalAlpha = 0.25 + 0.1 * Math.sin(lt * 0.5);
+                                        ctx.stroke();
+                                        ctx.globalAlpha = 1.0;
+
                                         if (heroMa.containsMouse && endAngle > 0.1) {
                                             if (window.isCharging) {
                                                 var surgeAngle = parent.pumpPhase * (endAngle + 0.6) - 0.3;
@@ -991,7 +1267,7 @@ Item {
                                     Text {
                                         font.family: "Iosevka Nerd Font"
                                         font.pixelSize: window.s(28)
-                                        color: window.batColorStart
+                                        color: window.isCharging || window.batCapacity < 30 ? window.batColorStart : window.mauve
                                         text: window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃")
                                         Behavior on color { ColorAnimation { duration: 400 } }
                                     }
@@ -1005,29 +1281,70 @@ Item {
                                     }
                                 }
 
-                                Text {
+                                Rectangle {
                                     Layout.alignment: Qt.AlignHCenter
-                                    font.family: "JetBrains Mono"
-                                    font.weight: Font.Bold
-                                    font.pixelSize: window.s(13)
-                                    
-                                    color: window.isCharging 
-                                            ? Qt.tint(window.green, Qt.rgba(1, 1, 1, parent.textPulse * 0.4)) 
-                                            : (centralCore.isDangerState ? Qt.tint(window.red, Qt.rgba(1, 1, 1, parent.textPulse * 0.3)) : window.subtext0)
-                                            
-                                    text: window.batStatus.toUpperCase()
+                                    Layout.preferredHeight: window.s(26)
+                                    Layout.preferredWidth: statusText.implicitWidth + window.s(20)
+                                    radius: window.s(13)
+                                    color: window.isCharging ? Qt.rgba(0.18, 0.65, 0.35, 0.25) : (centralCore.isDangerState ? Qt.rgba(0.8, 0.15, 0.15, 0.2) : "transparent")
                                     Behavior on color { ColorAnimation { duration: 300 } }
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: parent.radius
+                                        color: window.isCharging ? Qt.lighter(window.green, 1.5) : (centralCore.isDangerState ? Qt.lighter(window.red, 1.5) : "transparent")
+                                        opacity: parent.parent.textPulse * 0.3
+                                    }
+
+                                    Text {
+                                        id: statusText
+                                        anchors.centerIn: parent
+                                        font.family: "JetBrains Mono"
+                                        font.weight: Font.Black
+                                        font.pixelSize: window.s(12)
+                                        color: window.isCharging ? window.crust : (centralCore.isDangerState ? window.red : window.subtext0)
+                                        text: window.batStatus.toUpperCase()
+                                        Behavior on color { ColorAnimation { duration: 300 } }
+                                    }
                                 }
                             }
                         }
 
                         MouseArea {
                             id: heroMa
-                            anchors.fill: centralCore 
+                            anchors.fill: centralCore
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onEntered: batCanvas.requestPaint()
                             onExited: batCanvas.requestPaint()
+                            onClicked: {
+                                window.clickRippleActive = true;
+                                window.clickRippleTime = Date.now();
+                                clickRippleTimer.restart();
+                            }
+                            onPressed: (mouse) => {
+                                window.isDraggingCore = true;
+                                window.dragStartY = mouse.y;
+                                window.dragStartBrightness = window.sysBrightness;
+                            }
+                            onPositionChanged: (mouse) => {
+                                if (window.isDraggingCore && pressed) {
+                                    var deltaY = window.dragStartY - mouse.y;
+                                    var pctChange = Math.round((deltaY / centralCore.height) * 100);
+                                    var nb = Math.max(0, Math.min(100, window.dragStartBrightness + pctChange));
+                                    window.sysBrightness = nb;
+                                    Quickshell.execDetached(["brightnessctl", "set", nb + "%"]);
+                                }
+                            }
+                            onReleased: {
+                                window.isDraggingCore = false;
+                            }
+                        }
+
+                        Timer {
+                            id: clickRippleTimer
+                            interval: 800
+                            onTriggered: window.clickRippleActive = false
                         }
                     }
 
@@ -1091,6 +1408,21 @@ Item {
                                         }
 
                                         Rectangle {
+                                            height: parent.height + window.s(6)
+                                            width: (parent.width * (window.sysBrightness / 100)) + window.s(12)
+                                            radius: window.s(12)
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            opacity: 0.2
+                                            gradient: Gradient {
+                                                orientation: Gradient.Horizontal
+                                                GradientStop { position: 0.0; color: window.mauve; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                GradientStop { position: 0.5; color: window.batColorStart; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                GradientStop { position: 1.0; color: window.batColorEnd; Behavior on color { ColorAnimation { duration: 300 } } }
+                                            }
+                                            Behavior on width { enabled: !window.isDraggingBri; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
+                                        }
+
+                                        Rectangle {
                                             anchors.fill: parent
                                             radius: window.s(9)
                                             color: window.surface1
@@ -1108,7 +1440,8 @@ Item {
 
                                                 gradient: Gradient {
                                                     orientation: Gradient.Horizontal
-                                                    GradientStop { position: 0.0; color: window.batColorStart; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                    GradientStop { position: 0.0; color: window.mauve; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                    GradientStop { position: 0.5; color: window.batColorStart; Behavior on color { ColorAnimation { duration: 300 } } }
                                                     GradientStop { position: 1.0; color: window.batColorEnd; Behavior on color { ColorAnimation { duration: 300 } } }
                                                 }
                                             }
@@ -1187,6 +1520,20 @@ Item {
                                                     targetPct = -1;
                                                 }
                                             }
+                                        }
+
+                                        Rectangle {
+                                            height: parent.height + window.s(6)
+                                            width: (parent.width * (window.sysVolume / 100)) + window.s(12)
+                                            radius: window.s(12)
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            opacity: window.sysMuted ? 0.05 : 0.2
+                                            gradient: Gradient {
+                                                orientation: Gradient.Horizontal
+                                                GradientStop { position: 0.0; color: window.sysMuted ? window.surface2 : window.profileStart; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                GradientStop { position: 1.0; color: window.sysMuted ? Qt.lighter(window.surface2, 1.15) : window.profileEnd; Behavior on color { ColorAnimation { duration: 300 } } }
+                                            }
+                                            Behavior on width { enabled: !window.isDraggingVol; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
                                         }
 
                                         Rectangle {
