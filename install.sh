@@ -498,6 +498,7 @@ echo ""
 echo -e "${G}[15/18]${N} Restoring configuration files..."
 echo ""
 
+set +e
 for component in Hyprland Kitty Neovim Rofi SwayNC Matugen; do
     case "$component" in
         Hyprland)
@@ -533,9 +534,9 @@ for component in Hyprland Kitty Neovim Rofi SwayNC Matugen; do
             rm -rf /tmp/hyprland-config-backup 2>/dev/null
             cp -a "$TARGET" /tmp/hyprland-config-backup 2>/dev/null || true
         fi
-        rm -rf "$TARGET" 2>/dev/null
-        mkdir -p "$TARGET"
-        cp -rf "$INSTALL_DIR/$component/"* "$TARGET/" 2>/dev/null || true
+        rm -rf "$TARGET" 2>/dev/null || true
+        mkdir -p "$TARGET" 2>/dev/null || true
+        cp -a "$INSTALL_DIR/$component/." "$TARGET/" 2>/dev/null || true
         if [ "$component" = "Hyprland" ] && [ -f /tmp/hyprland_weather_env.bak ]; then
             mkdir -p "$TARGET/scripts/quickshell/calendar"
             mv /tmp/hyprland_weather_env.bak "$TARGET/scripts/quickshell/calendar/.env"
