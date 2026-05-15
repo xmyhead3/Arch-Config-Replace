@@ -140,19 +140,19 @@ Variants {
             Shortcut { enabled: floatingWidget.isSidebarVisible && !floatingWidget.childIntercepts("Enter"); sequence: "Enter"; onActivated: { floatingWidget.isExpanded = !floatingWidget.isExpanded; floatingWidget.kickTimer(); } }
             
             Shortcut { 
-                enabled: floatingWidget.isSidebarVisible && (floatingWidget.activeEdge === "left" || floatingWidget.activeEdge === "right") && !floatingWidget.childIntercepts("Up")
+                enabled: floatingWidget.isSidebarVisible && floatingWidget.activeEdge === "right" && !floatingWidget.childIntercepts("Up")
                 sequence: "Up"
                 onActivated: { 
-                    let step = floatingWidget.activeEdge === "right" ? 1 : -1;
+                    let step = 1;
                     floatingWidget.activeIndex = Math.max(0, Math.min(floatingWidget.tabCount - 1, floatingWidget.activeIndex + step)); 
                     floatingWidget.kickTimer(); 
                 } 
             }
             Shortcut { 
-                enabled: floatingWidget.isSidebarVisible && (floatingWidget.activeEdge === "left" || floatingWidget.activeEdge === "right") && !floatingWidget.childIntercepts("Down")
+                enabled: floatingWidget.isSidebarVisible && floatingWidget.activeEdge === "right" && !floatingWidget.childIntercepts("Down")
                 sequence: "Down"
                 onActivated: { 
-                    let step = floatingWidget.activeEdge === "right" ? -1 : 1;
+                    let step = -1;
                     floatingWidget.activeIndex = Math.max(0, Math.min(floatingWidget.tabCount - 1, floatingWidget.activeIndex + step)); 
                     floatingWidget.kickTimer(); 
                 } 
@@ -199,9 +199,7 @@ Variants {
             property var currentLayoutTemplate: [{x: 0, y: 0, w: 1, h: 1}]
 
             function evaluateDrag(gpStartX, gpStartY, gpMouseX, gpMouseY) {
-                let delta = 0;
-                if (activeEdge === "left") delta = gpMouseX - gpStartX;
-                else if (activeEdge === "right") delta = gpStartX - gpMouseX;
+                let delta = gpStartX - gpMouseX;
                 if (delta > s(30) && !isExpanded) {
                     isExpanded = true;
                 } else if (delta < -s(30) && (isExpanded || isSidebarVisible)) {
@@ -221,7 +219,7 @@ Variants {
             property real buttonSize: s(19)
             property real controlAreaHeight: buttonSize * 2 + s(14)
 
-            property real barOffsetY: activeEdge === "left" ? (controlAreaHeight + itemSpacing) : 0
+            property real barOffsetY: 0
 
             function getTargetY(idx, activeIdx) {
                 let y = 0;
@@ -398,7 +396,7 @@ Variants {
             property bool isPeekVisible: false
             property bool disableAnim: false
             
-            property string activeEdge: "left"
+            property string activeEdge: "right"
             property real currentPos: 0
 
             property real baseSidebarH: {
@@ -416,18 +414,13 @@ Variants {
             property real sidebarW: s(35)
             
             property real sidebarTargetX: {
-                if (activeEdge === "left") return 0;
                 if (activeEdge === "right") return floatingWidget.width - sidebarW;
                 return 0;
             }
 
-            property real sidebarTargetY: {
-                if (activeEdge === "left" || activeEdge === "right") return clampedCenterY - baseSidebarH / 2;
-                return 0;
-            }
+            property real sidebarTargetY: clampedCenterY - baseSidebarH / 2
 
             property real targetRotation: {
-                if (activeEdge === "left") return 0;
                 if (activeEdge === "right") return 180;
                 return 0;
             }
@@ -514,8 +507,7 @@ Variants {
                         peekHideTimer.restart();
                         return;
                     }
-                    if (!peekMouse.containsMouse && 
-                        !leftEdge.containsMouse && !rightEdge.containsMouse) {
+                    if (!peekMouse.containsMouse && !rightEdge.containsMouse) {
                         floatingWidget.isPeekVisible = false;
                     }
                 }
@@ -561,36 +553,6 @@ Variants {
                 id: mainHitArea 
                 anchors.fill: parent
 
-                MouseArea {
-                    id: leftEdge
-                    x: 0; y: 0; width: 1; height: floatingWidget.height
-                    hoverEnabled: true
-                    onEntered: { 
-                        peekHideTimer.stop(); 
-                        if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") { 
-                            floatingWidget.showSidebar("left", mouseY + y); 
-                        } else if (floatingWidget.isPeekVisible) {
-                            floatingWidget.showPeek("left", mouseY + y);
-                        } else {
-                            peekShowTimer.pendingShowEdge = "left";
-                            peekShowTimer.pendingShowPos = mouseY + y;
-                            peekShowTimer.restart();
-                        }
-                    }
-                    onPositionChanged: mouse => { 
-                        if (floatingWidget.isSidebarVisible || floatingWidget.pendingMode === "sidebar") { 
-                            floatingWidget.showSidebar("left", mouse.y + y); 
-                        } else if (floatingWidget.isPeekVisible) {
-                            floatingWidget.showPeek("left", mouse.y + y);
-                        } else {
-                            peekShowTimer.pendingShowPos = mouse.y + y;
-                        }
-                    }
-                    onExited: {
-                        peekShowTimer.stop();
-                        peekHideTimer.restart();
-                    }
-                }
 
                 MouseArea {
                     id: rightEdge
@@ -651,11 +613,6 @@ Variants {
 
                 x: {
                     let offscreen = 0, visibleX = 0;
-                    if (floatingWidget.activeEdge === "left") {
-                        offscreen = -width - floatingWidget.s(10);
-                        visibleX = floatingWidget.s(4); 
-                        return (floatingWidget.isPeekVisible ? visibleX : offscreen) + visualDragOffset;
-                    }
                     if (floatingWidget.activeEdge === "right") {
                         offscreen = floatingWidget.width + floatingWidget.s(10);
                         visibleX = floatingWidget.width - width - floatingWidget.s(4); 
@@ -665,7 +622,7 @@ Variants {
                 }
 
                 y: {
-                    if (floatingWidget.activeEdge === "left" || floatingWidget.activeEdge === "right") return clampedCenterY - height / 2;
+                    if (floatingWidget.activeEdge === "right") return clampedCenterY - height / 2;
                     return 0;
                 }
 
@@ -708,8 +665,7 @@ Variants {
                         let gp = mapToItem(mainHitArea, mouse.x, mouse.y);
                         let delta = 0;
                         
-                        if (floatingWidget.activeEdge === "left") delta = gp.x - startGlobalX;
-                        else if (floatingWidget.activeEdge === "right") delta = startGlobalX - gp.x;
+                        delta = startGlobalX - gp.x;
 
                         currentDragDelta = delta;
 
@@ -745,7 +701,6 @@ Variants {
 
                 x: {
                     if (floatingWidget.isSidebarVisible) return floatingWidget.sidebarTargetX;
-                    if (floatingWidget.activeEdge === "left") return -width - floatingWidget.s(20);
                     if (floatingWidget.activeEdge === "right") return floatingWidget.width + floatingWidget.s(20);
                     return floatingWidget.sidebarTargetX;
                 }
@@ -848,7 +803,7 @@ Variants {
                                 anchors.centerIn: parent
                                 width: parent.width
                                 height: parent.height
-                                rotation: floatingWidget.activeEdge === "right" ? 180 : 0
+                                rotation: 180
 
                                 property real sp: floatingWidget.s(10) 
                                 property real cw: Math.max(0, width) 
@@ -931,8 +886,8 @@ Variants {
                             onExited: { if (!sidebarDragArea.containsMouse) floatingWidget.kickTimer(); }
                             onWheel: wheel => {
                                 let step = 0;
-                                if (wheel.angleDelta.y > 0) step = floatingWidget.activeEdge === "right" ? 1 : -1;
-                                else if (wheel.angleDelta.y < 0) step = floatingWidget.activeEdge === "right" ? -1 : 1;
+                                if (wheel.angleDelta.y > 0) step = 1;
+                                else if (wheel.angleDelta.y < 0) step = -1;
                                 
                                 if (step !== 0) {
                                     floatingWidget.activeIndex = Math.max(0, Math.min(floatingWidget.tabCount - 1, floatingWidget.activeIndex + step));
@@ -963,9 +918,7 @@ Variants {
                                 width: parent.width
                                 height: floatingWidget.controlAreaHeight
                                 x: 0
-                                y: floatingWidget.activeEdge === "left"
-                                    ? 0
-                                    : floatingWidget.getTargetY(floatingWidget.tabCount, floatingWidget.activeIndex)
+                                y: floatingWidget.getTargetY(floatingWidget.tabCount, floatingWidget.activeIndex)
 
                                 Behavior on y {
                                     enabled: !floatingWidget.disableAnim
@@ -978,9 +931,7 @@ Variants {
                                     width: floatingWidget.buttonSize
                                     height: floatingWidget.buttonSize
                                     x: (parent.width - width) / 2
-                                    y: floatingWidget.activeEdge === "left"
-                                        ? floatingWidget.s(6)
-                                        : parent.height - height - floatingWidget.s(6)
+                                    y: parent.height - height - floatingWidget.s(6)
 
                                     rotation: floatingWidget.isExpanded ? 180 : 0
                                     Behavior on rotation { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
@@ -1072,9 +1023,7 @@ Variants {
                                     height: floatingWidget.buttonSize
                                     radius: width / 2
                                     x: (parent.width - width) / 2
-                                    y: floatingWidget.activeEdge === "left"
-                                        ? expandButton.y + expandButton.height + floatingWidget.s(8)
-                                        : expandButton.y - height - floatingWidget.s(8)
+                                    y: expandButton.y - height - floatingWidget.s(8)
 
                                     color: floatingWidget.isPinned
                                         ? mocha.mauve
