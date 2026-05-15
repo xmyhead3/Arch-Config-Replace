@@ -185,6 +185,13 @@ fi
 echo ""
 step_header 1 20 "Downloading dotfiles..."
 
+mkdir -p "$TMP_DIR"
+if command -v git &>/dev/null; then
+    git clone --depth 1 "https://github.com/$REPO.git" "$INSTALL_DIR" 2>&1 || true
+else
+    echo -e "  ${R}!${N} git not found — cannot download repo"
+fi
+
 step_header 2 20 "Updating system packages..."
 
 step_header 3 20 "Detecting and installing GPU drivers..."
