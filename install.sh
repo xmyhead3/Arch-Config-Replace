@@ -378,8 +378,9 @@ echo "LOCAL_VERSION_NAME=\"$DOTS_VERSION_NAME\"" >> "$HOME/.local/state/wiferice
 
 # ─── WEATHER CONFIG ─────────────────────────────────────────────────────
 
+WEATHER_ENV="$HOME/.config/hypr/scripts/quickshell/calendar/.env"
+
 if [ -n "$WEATHER_API_KEY" ] && [ -n "$WEATHER_CITY_ID" ]; then
-    WEATHER_ENV="$HOME/.config/hypr/scripts/quickshell/calendar/.env"
     mkdir -p "$(dirname "$WEATHER_ENV")"
     cat > "$WEATHER_ENV" << EOF
 OPENWEATHER_KEY='$WEATHER_API_KEY'
@@ -387,6 +388,8 @@ OPENWEATHER_CITY_ID='$WEATHER_CITY_ID'
 OPENWEATHER_UNIT='$WEATHER_UNIT'
 EOF
     echo -e "  ${G}✓${N} Weather configured (city ID: $WEATHER_CITY_ID, unit: $WEATHER_UNIT)"
+elif [ -z "$WEATHER_API_KEY" ] && [ -f "$WEATHER_ENV" ]; then
+    echo -e "  ${Y}─${N} Weather skipped — keeping existing settings"
 fi
 
 # ─── FIX PAM AUTH FOR LOCK SCREEN & POLKIT ──────────────────────────────
