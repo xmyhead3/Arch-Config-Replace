@@ -113,7 +113,7 @@ ShellRoot {
                 Process {
                     id: lockWallpaperFinder; running: true
                     command: ["bash", "-c",
-                        "for dir in \"$HOME/.Wallpapers\" \"$HOME/Pictures/Wallpapers\" /usr/share/wallpapers; do " +
+                        "for dir in \"$HOME/.Wallpapers\" /usr/share/wallpapers; do " +
                         "for f in \"$dir\"/lock.*; do " +
                         "[ -f \"$f\" ] && echo \"$f\" && exit 0; " +
                         "done; done; " +
