@@ -335,6 +335,8 @@ if command -v magick &>/dev/null || command -v convert &>/dev/null; then
         > "$HOME/.cache/wallpaper_picker/thumbs/.manifest" 2>/dev/null || true
 fi
 
+fi
+
 # Install awww wallpaper setter if missing
 if ! command -v awww &>/dev/null; then
     echo -e "  ${Y}!${N} awww not found, installing awww-git from AUR..."
@@ -357,7 +359,6 @@ else
 fi
 
 echo -e "  ${G}✓${N} Wallpapers ready for picker (Super+W)"
-fi
 
 # ─── CLEANUP STALE REFERENCES ────────────────────────────────────────────
 
