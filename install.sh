@@ -545,12 +545,13 @@ for component in Hyprland Kitty Neovim Rofi SwayNC Matugen; do
             cp /tmp/hyprland_settings.bak "$TARGET/settings.json"
             rm -f /tmp/hyprland_settings.bak
         fi
-        # Integrity check: verify key files were actually written
-        if [ "$component" = "Hyprland" ] && [ ! -f "$TARGET/hyprland.conf" ]; then
-            echo -e "  ${R}[FAIL]${N} hyprland.conf missing after restore — restoring from backup..."
+        # Integrity check: verify ALL critical files were actually written
+        if [ "$component" = "Hyprland" ] && { [ ! -f "$TARGET/hyprland.conf" ] || [ ! -f "$TARGET/config/monitors.conf" ]; }; then
+            echo -e "  ${R}[FAIL]${N} Config files missing after copy — restoring from backup..."
             if [ -d /tmp/hyprland-config-backup ]; then
                 rm -rf "$TARGET" 2>/dev/null
-                cp -a /tmp/hyprland-config-backup "$TARGET" 2>/dev/null || true
+                mkdir -p "$TARGET"
+                cp -a /tmp/hyprland-config-backup/. "$TARGET/" 2>/dev/null || true
                 echo -e "  ${G}✓${N} Hyprland config restored from backup"
             else
                 echo -e "  ${R}[FAIL]${N} No backup found at /tmp/hyprland-config-backup"
