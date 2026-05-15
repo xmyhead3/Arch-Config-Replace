@@ -545,11 +545,6 @@ echo ""
 echo -e "${G}[15/18]${N} Restoring configuration files..."
 echo ""
 
-echo -e "  ${Y}?${N} Overwrite existing configs? [y/N] "
-read -r OVERWRITE_CONFIRM
-
-if [[ "$OVERWRITE_CONFIRM" =~ ^[Yy]$ ]]; then
-
 set +e
 for component in Hyprland Kitty Neovim Rofi SwayNC Matugen; do
     # Skip components based on user choices
@@ -634,7 +629,6 @@ if [ -f "$HOME/.config/hypr/scripts/settings_watcher.sh" ]; then
 fi
 
 echo -e "  ${G}✓${N} Config restore complete"
-fi
 
 # ─── INSTALL OH-MY-ZSH & PLUGINS ──────────────────────────────────────
 
@@ -699,30 +693,17 @@ if [ -f "$INSTALL_DIR/Wallpapers/README.md" ]; then
     cp -f "$INSTALL_DIR/Wallpapers/README.md" "$HOME/.Wallpapers/README.md" 2>/dev/null || true
 fi
 
-# Only copy default wallpapers on first install (user has no Wallpapers folder yet)
-if [ ! -d "$HOME/Pictures/Wallpapers" ]; then
-    mkdir -p "$HOME/Pictures/Wallpapers"
-    if [ -d "$INSTALL_DIR/Wallpapers" ]; then
-        find "$INSTALL_DIR/Wallpapers" -maxdepth 1 -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" -o -iname "*.gif" \) -exec cp -f {} "$HOME/Pictures/Wallpapers/" \;
-        echo -e "  ${G}✓${N} Default wallpapers installed (first install)"
-    fi
-else
-    echo -e "  ${G}✓${N} Wallpapers folder exists — keeping user's wallpapers"
+# Add Himeno wallpaper to Pictures
+mkdir -p "$HOME/Pictures/Wallpapers"
+if [ -f "$INSTALL_DIR/Wallpapers/Himeno Hot Face.png" ]; then
+    cp -f "$INSTALL_DIR/Wallpapers/Himeno Hot Face.png" "$HOME/Pictures/Wallpapers/"
+    echo -e "  ${G}✓${N} Himeno wallpaper added to Pictures/Wallpapers"
 fi
 if [ -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" ]; then
-    # Only copy default wallpaper to Pictures if user has no wallpapers yet
-    if [ ! -d "$HOME/Pictures/Wallpapers" ] || [ -z "$(ls -A "$HOME/Pictures/Wallpapers" 2>/dev/null)" ]; then
-        cp -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" "$HOME/Pictures/Wallpapers/"
-    fi
-    # Lock screen wallpaper — only set if user doesn't already have one
-    if [ ! -f /usr/share/wallpapers/lock.png ]; then
-        sudo mkdir -p /usr/share/wallpapers
-        sudo cp -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" /usr/share/wallpapers/lock.png
-    fi
-    # Copy existing system wallpaper to user's home folder so they can customize it
-    if [ -f /usr/share/wallpapers/lock.png ] && ! ls "$HOME/.Wallpapers/lock."* &>/dev/null; then
-        cp -f /usr/share/wallpapers/lock.png "$HOME/.Wallpapers/lock.png" 2>/dev/null || true
-    fi
+    # Lock screen wallpaper — always deploy the default, never touch user's ~/.Wallpapers
+    sudo mkdir -p /usr/share/wallpapers
+    sudo cp -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" /usr/share/wallpapers/lock.png
+    echo -e "  ${Y}─${N} System lockscreen set — place your own image in ~/.Wallpapers/lock.* to override"
     # SDDM login theme — only deploy if user chose to overwrite
     if [[ "$SDDM_OVERWRITE" =~ ^[Yy]$ ]] && [ -d "$INSTALL_DIR/SDDM/matugen-minimal" ] && command -v sudo &>/dev/null; then
         sudo mkdir -p /usr/share/sddm/themes/matugen-minimal
