@@ -61,17 +61,33 @@ Item {
     readonly property color blue: _theme.blue
 
     // -------------------------------------------------------------------------
-    // STATE & CONFIG
+    // AMETHYST NOIR THEME
     // -------------------------------------------------------------------------
-    readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/volume"
-    
-    property string activeTab: "outputs" // outputs, inputs, apps
-    onActiveTabChanged: updateHeroData()
+    readonly property color amethyst: Qt.rgba(0.702, 0.502, 1.0, 1.0)
+    readonly property color amethystDark: Qt.rgba(0.302, 0.102, 0.502, 1.0)
+    readonly property color amethystGlow: Qt.rgba(0.502, 0.302, 0.902, 0.4)
+    readonly property color noirBg: Qt.rgba(0.04, 0.01, 0.08, 1.0)
+    readonly property color noirSurface: Qt.rgba(0.12, 0.04, 0.18, 1.0)
+    readonly property color noirSurface1: Qt.lighter(window.noirSurface, 1.2)
+    readonly property color noirSurface2: Qt.lighter(window.noirSurface, 1.4)
+    readonly property color noirCrust: Qt.rgba(0.12, 0.06, 0.2, 1.0)
+    readonly property color noirText: Qt.lighter(window.amethyst, 1.6)
+    readonly property color noirSubtext0: Qt.rgba(0.6, 0.45, 0.85, 0.8)
+    readonly property color noirOverlay0: Qt.rgba(0.4, 0.25, 0.6, 0.7)
+    readonly property color noirRed: Qt.rgba(0.9, 0.15, 0.25, 1.0)
+    readonly property color noirRedGlow: Qt.rgba(0.7, 0.1, 0.2, 0.6)
+    readonly property color noirRedShadow: Qt.rgba(0.5, 0.05, 0.1, 0.4)
 
     readonly property color tabColor: {
-        if (activeTab === "outputs") return window.blue;
-        if (activeTab === "inputs") return window.mauve;
-        return window.green;
+        if (window.activeMute) return window.noirSurface2;
+        if (window.displayVol <= 100) return window.amethyst;
+        var t = Math.min(1, (window.displayVol - 100) / 50);
+        return Qt.rgba(
+            window.amethyst.r + (window.noirRed.r - window.amethyst.r) * t,
+            window.amethyst.g + (window.noirRed.g - window.amethyst.g) * t,
+            window.amethyst.b + (window.noirRed.b - window.amethyst.b) * t,
+            1.0
+        );
     }
     
     property real globalOrbitAngle: 0
@@ -80,12 +96,17 @@ Item {
     }
 
     // Top Orb Active State Links
+    property string activeTab: "outputs"
     property string activeId: ""
     property string activeName: "No Device"
     property string activeDesc: ""
     property int activeVol: 0
     property bool activeMute: false
     property string activeIcon: "󰓃"
+    property bool boostEnabled: false
+    property int maxVolume: boostEnabled ? 150 : 100
+    property int displayVol: Math.min(maxVolume, window.activeVol)
+    readonly property string scriptsDir: Quickshell.env("HOME") + "/.config/hypr/scripts/quickshell/volume"
 
     // Models
     ListModel { id: outputsModel }
@@ -150,6 +171,22 @@ Item {
                 window.activeVol = d.volume;
                 window.activeMute = d.mute;
             }
+        }
+    }
+
+    onActiveVolChanged: {
+        if (window.activeVol > 100) window.boostEnabled = true;
+        if (window.activeVol <= 100 && window.boostEnabled) window.boostEnabled = false;
+        if (!window.boostEnabled) window.fillRamp = window.activeVol / Math.max(1, window.maxVolume);
+        if (window.boostEnabled) window.fillRamp = window.displayVol / Math.max(1, window.maxVolume);
+    }
+
+    property real fillRamp: 0
+    onBoostEnabledChanged: {
+        if (!window.boostEnabled) {
+            window.fillRamp = window.activeVol / Math.max(1, window.maxVolume);
+        } else {
+            window.fillRamp = window.displayVol / Math.max(1, window.maxVolume);
         }
     }
 
@@ -238,8 +275,8 @@ Item {
         Rectangle {
             anchors.fill: parent
             radius: window.s(20)
-            color: window.base
-            border.color: window.surface0
+            color: window.noirBg
+            border.color: window.noirSurface
             border.width: 1
             clip: true
 
@@ -248,16 +285,16 @@ Item {
                 width: parent.width * 0.8; height: width; radius: width / 2
                 x: (parent.width / 2 - width / 2) + Math.cos(window.globalOrbitAngle * 2) * window.s(150)
                 y: (parent.height / 2 - height / 2) + Math.sin(window.globalOrbitAngle * 2) * window.s(100)
-                opacity: 0.06
-                color: window.tabColor
+                opacity: 0.12
+                color: window.amethystGlow
                 Behavior on color { ColorAnimation { duration: 800 } }
             }
             Rectangle {
                 width: parent.width * 0.9; height: width; radius: width / 2
                 x: (parent.width / 2 - width / 2) + Math.sin(window.globalOrbitAngle * 1.5) * window.s(-150)
                 y: (parent.height / 2 - height / 2) + Math.cos(window.globalOrbitAngle * 1.5) * window.s(-100)
-                opacity: 0.04
-                color: Qt.lighter(window.tabColor, 1.3)
+                opacity: 0.08
+                color: window.ambientAmethyst
                 Behavior on color { ColorAnimation { duration: 800 } }
             }
 
@@ -293,7 +330,7 @@ Item {
                                 height: width
                                 radius: width / 2
                                 color: "transparent"
-                                border.color: window.activeMute ? window.red : window.tabColor
+                                border.color: window.activeMute ? window.red : (window.displayVol > 100 ? window.noirRedGlow : window.tabColor)
                                 border.width: window.s(3)
                                 z: -2
 
@@ -320,10 +357,10 @@ Item {
                                 width: parent.width + window.s(40)
                                 height: width
                                 radius: width / 2
-                                color: window.activeMute ? window.red : window.tabColor
-                                opacity: window.activeMute ? 0.3 : 0.15
+                                color: window.activeMute ? window.red : (window.displayVol > 100 ? window.noirRedGlow : window.tabColor)
+                                opacity: window.activeMute ? 0.3 : (window.displayVol > 100 ? 0.35 : 0.15)
                                 z: -1
-                                Behavior on color { ColorAnimation { duration: 300 } }
+                                Behavior on color { ColorAnimation { duration: 600 } }
 
                                 SequentialAnimation on scale {
                                     loops: Animation.Infinite; running: true
@@ -349,8 +386,8 @@ Item {
                                 id: centralCore
                                 anchors.fill: parent
                                 radius: width / 2
-                                color: window.base
-                                border.color: window.activeMute ? window.red : Qt.lighter(window.tabColor, 1.1)
+                                color: window.noirBg
+                                border.color: window.activeMute ? window.red : Qt.lighter(window.tabColor, 1.3)
                                 border.width: 2
                                 clip: true
                                 Behavior on border.color { ColorAnimation { duration: 300 } }
@@ -359,10 +396,14 @@ Item {
                                 Canvas {
                                     id: orbWave
                                     anchors.fill: parent
+
+                                    // Force repaint when fillRamp changes (tracker workaround)
+                                    property real fillTracker: window.fillRamp
+                                    onFillTrackerChanged: requestPaint()
                                     
                                     property real wavePhase: 0.0
                                     NumberAnimation on wavePhase {
-                                        running: window.activeVol > 0 && window.activeVol < 100
+                                        running: window.displayVol > 0 && window.displayVol < window.maxVolume
                                         loops: Animation.Infinite
                                         from: 0; to: Math.PI * 2; duration: 1200
                                     }
@@ -371,6 +412,8 @@ Item {
                                     Connections {
                                         target: window
                                         function onActiveVolChanged() { orbWave.requestPaint() }
+                                        function onBoostEnabledChanged() { orbWave.requestPaint() }
+                                        function onFillRampChanged() { orbWave.requestPaint() }
                                         function onActiveMuteChanged() { orbWave.requestPaint() }
                                         function onTabColorChanged() { orbWave.requestPaint() }
                                     }
@@ -378,9 +421,9 @@ Item {
                                     onPaint: {
                                         var ctx = getContext("2d");
                                         ctx.clearRect(0, 0, width, height);
-                                        if (window.activeVol <= 0) return;
+                                        if (window.displayVol <= 0) return;
 
-                                        var fillRatio = window.activeVol / 100.0;
+                                        var fillRatio = window.boostEnabled ? (window.displayVol / Math.max(1, window.maxVolume)) : window.fillRamp;
                                         var r = width / 2;
                                         var fillY = height * (1.0 - fillRatio);
 
@@ -395,21 +438,14 @@ Item {
                                         ctx.beginPath();
                                         ctx.moveTo(0, fillY);
                                         
-                                        if (fillRatio < 0.99) {
-                                            var waveAmp = window.s(8) * Math.sin(fillRatio * Math.PI); 
-                                            var cp1y = fillY + Math.sin(wavePhase) * waveAmp;
-                                            var cp2y = fillY + Math.cos(wavePhase + Math.PI) * waveAmp;
-                                            ctx.bezierCurveTo(width * 0.33, cp2y, width * 0.66, cp1y, width, fillY);
-                                            ctx.lineTo(width, height);
-                                            ctx.lineTo(0, height);
-                                        } else {
-                                            ctx.lineTo(width, 0);
-                                            ctx.lineTo(width, height);
-                                            ctx.lineTo(0, height);
-                                        }
+                                        var waveAmp = window.s(8) * Math.sin(Math.min(fillRatio, 0.99) * Math.PI);
+                                        var cp1y = fillY + Math.sin(wavePhase) * waveAmp;
+                                        var cp2y = fillY + Math.cos(wavePhase + Math.PI) * waveAmp;
+                                        ctx.bezierCurveTo(width * 0.33, cp2y, width * 0.66, cp1y, width, fillY);
+                                        ctx.lineTo(width, height);
+                                        ctx.lineTo(0, height);
                                         ctx.closePath();
                                         
-                                        // Vibrant gradient matching the network orb
                                         var grad = ctx.createLinearGradient(0, 0, 0, height);
                                         if (window.activeMute) {
                                             grad.addColorStop(0, Qt.lighter(window.red, 1.15).toString());
@@ -432,8 +468,8 @@ Item {
                                     font.family: "JetBrains Mono"
                                     font.weight: Font.Black
                                     font.pixelSize: window.s(32)
-                                    color: window.activeMute ? window.red : window.text
-                                    text: window.activeMute ? "MUTE" : window.activeVol + "%"
+                                    color: window.activeMute ? window.red : (window.displayVol > 100 ? window.noirRed : window.noirText)
+                                    text: window.activeMute ? "MUTE" : window.displayVol + "%"
                                     Behavior on color { ColorAnimation { duration: 200 } }
                                 }
 
@@ -444,15 +480,14 @@ Item {
                                     anchors.left: parent.left
                                     anchors.right: parent.right
 
-                                    // Calculate the exact wave offset at the center of the orb using the Bezier formula
-                                    property real fillRatio: window.activeVol / 100.0
-                                    property real waveAmp: fillRatio < 0.99 ? window.s(8) * Math.sin(fillRatio * Math.PI) : 0
+                                    property real fillRatio: window.boostEnabled ? (window.displayVol / Math.max(1, window.maxVolume)) : window.fillRamp
+                                    property real waveAmp: window.s(8) * Math.sin(Math.min(fillRatio, 0.99) * Math.PI)
                                     property real waveCenterOffset: 0.375 * waveAmp * (Math.sin(orbWave.wavePhase) - Math.cos(orbWave.wavePhase))
                                     property real baseClipHeight: parent.height * fillRatio
 
                                     height: Math.min(parent.height, Math.max(0, baseClipHeight - waveCenterOffset))
                                     clip: true
-                                    visible: window.activeVol > 0
+                                    visible: window.displayVol > 0
 
                                     Text {
                                         x: waveClipItem.width / 2 - width / 2
@@ -460,8 +495,8 @@ Item {
                                         font.family: "JetBrains Mono"
                                         font.weight: Font.Black
                                         font.pixelSize: window.s(32)
-                                        color: window.crust
-                                        text: window.activeMute ? "MUTE" : window.activeVol + "%"
+                                        color: window.noirCrust
+                                        text: window.activeMute ? "MUTE" : window.displayVol + "%"
                                     }
                                 }
                             }
@@ -489,9 +524,9 @@ Item {
                                     }
                                     if (!wasDrag) return;
                                     let delta = -Math.round(dy * 0.15);
-                                    let newVol = Math.max(0, Math.min(100, pressVol + delta));
+                                    let newVol = Math.max(0, Math.min(150, pressVol + delta));
                                     window.activeVol = newVol;
-                                    masterCmdThrottle.targetPct = newVol;
+                                    masterCmdThrottle.targetPct = window.displayVol;
                                     if (!masterCmdThrottle.running) masterCmdThrottle.start();
                                 }
                                 onReleased: {
@@ -522,18 +557,16 @@ Item {
                                 Text {
                                     Layout.fillWidth: true; elide: Text.ElideRight
                                     font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: window.s(20)
-                                    color: window.text
+                                    color: window.noirText
                                     text: window.activeName
                                 }
                                 Text {
                                     Layout.fillWidth: true; elide: Text.ElideRight
                                     font.family: "JetBrains Mono"; font.pixelSize: window.s(13)
-                                    color: window.subtext0
+                                    color: window.noirSubtext0
                                     text: window.activeTab === "apps" ? "Master Output Volume" : window.activeDesc
                                 }
                             }
-
-                            Item { Layout.fillHeight: true } // spacer
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -567,16 +600,17 @@ Item {
 
                                         Rectangle {
                                             height: parent.height
-                                            width: parent.width * (Math.min(100, window.activeVol) / 100)
+                                            width: parent.width * (window.displayVol / Math.max(1, window.maxVolume))
                                             radius: window.s(12)
                                             opacity: window.activeMute ? 0.3 : (masterSliderMa.containsMouse ? 1.0 : 0.85)
                                             Behavior on opacity { NumberAnimation { duration: 200 } }
-                                            Behavior on width { enabled: !window.draggingMaster; NumberAnimation { duration: 300; easing.type: Easing.OutQuint } }
+                                            Behavior on width { enabled: !window.draggingMaster; NumberAnimation { duration: 800; easing.type: Easing.OutExpo } }
 
                                             gradient: Gradient {
                                                 orientation: Gradient.Horizontal
-                                                GradientStop { position: 0.0; color: window.activeMute ? window.surface2 : window.tabColor; Behavior on color { ColorAnimation{duration: 300} } }
-                                                GradientStop { position: 1.0; color: window.activeMute ? Qt.lighter(window.surface2, 1.15) : Qt.lighter(window.tabColor, 1.25); Behavior on color { ColorAnimation{duration: 300} } }
+                                                GradientStop { position: 0.0; color: window.activeMute ? window.noirSurface2 : window.amethyst; Behavior on color { ColorAnimation{duration: 600} } }
+                                                GradientStop { position: Math.min(1, 100 / Math.max(1, window.maxVolume)); color: window.activeMute ? window.noirSurface2 : window.amethyst; Behavior on color { ColorAnimation{duration: 600} } }
+                                                GradientStop { position: 1.0; color: window.activeMute ? window.noirSurface2 : window.noirRed; Behavior on color { ColorAnimation{duration: 600} } }
                                             }
                                         }
                                     }
@@ -589,10 +623,9 @@ Item {
                                         onReleased: { syncDelay.restart(); audioPoller.running = true; }
                                         
                                         function updateVol(mx) {
-                                            let pct = Math.max(0, Math.min(100, Math.round((mx / width) * 100)));
-                                            window.activeVol = pct; // Instant visual feedback on orb
-
-                                            masterCmdThrottle.targetPct = pct;
+                                            let pct = Math.max(0, Math.min(150, Math.round((mx / width) * 150)));
+                                            window.activeVol = pct;
+                                            masterCmdThrottle.targetPct = window.displayVol;
                                             if (!masterCmdThrottle.running) masterCmdThrottle.start();
                                         }
                                     }
@@ -609,8 +642,8 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: window.s(54)
                     radius: window.s(14)
-                    color: "#0dffffff" 
-                    border.color: "#1affffff"
+                    color: Qt.rgba(0.12, 0.04, 0.18, 0.3)
+                    border.color: Qt.rgba(0.5, 0.3, 0.7, 0.2)
                     border.width: 1
                     opacity: introHeader
                     transform: Translate { y: window.s(20) * (1.0 - introHeader) }
@@ -654,13 +687,13 @@ Item {
                                     spacing: window.s(8)
                                     Text {
                                         font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(18)
-                                        color: window.activeTab === tabId ? window.crust : (tabMa.containsMouse ? window.text : window.subtext0)
+                                        color: window.activeTab === tabId ? window.noirCrust : (tabMa.containsMouse ? window.noirText : window.noirSubtext0)
                                         text: icon
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
                                     Text {
                                         font.family: "JetBrains Mono"; font.weight: Font.Black; font.pixelSize: window.s(13)
-                                        color: window.activeTab === tabId ? window.crust : (tabMa.containsMouse ? window.text : window.subtext0)
+                                        color: window.activeTab === tabId ? window.noirCrust : (tabMa.containsMouse ? window.noirText : window.noirSubtext0)
                                         text: label
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                     }
@@ -672,6 +705,81 @@ Item {
                                     onClicked: {
                                         window.activeTab = tabId;
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ==========================================
+                // VU METER
+                // ==========================================
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: window.s(28)
+                    opacity: introContent
+
+                    Rectangle {
+                        anchors.fill: parent; radius: window.s(6)
+                        color: Qt.rgba(0.2, 0.08, 0.3, 0.2); border.color: Qt.rgba(0.5, 0.3, 0.7, 0.2); border.width: 1
+
+                        Canvas {
+                            id: vuCanvas
+                            anchors.fill: parent; anchors.margins: window.s(2)
+
+                            property real level: 0
+                            property var bars: []
+
+                            Timer {
+                                interval: 80; running: true; repeat: true
+                                onTriggered: {
+                                    let target = parent.parent.visible ? (Math.random() * (window.displayVol / window.maxVolume * 100)) : 0;
+                                    parent.level += (target - parent.level) * 0.3;
+                                    parent.bars = [];
+                                    let barCount = Math.floor(parent.width / (window.s(3) + window.s(2)));
+                                    for (let i = 0; i < barCount; i++) {
+                                        let barVal = Math.max(0, (parent.level / 100) * (1 - Math.abs(i - barCount/2) / (barCount/2)) + Math.random() * 0.1);
+                                        if (barVal > 0) parent.bars.push(Math.min(1, barVal));
+                                        else parent.bars.push(0);
+                                    }
+                                    parent.requestPaint();
+                                }
+                            }
+
+                            onPaint: {
+                                var ctx = getContext("2d");
+                                ctx.clearRect(0, 0, width, height);
+                                if (bars.length === 0) return;
+
+                                var barW = window.s(3);
+                                var gap = window.s(2);
+                                var totalW = bars.length * (barW + gap) - gap;
+                                var startX = (width - totalW) / 2;
+
+                                for (var i = 0; i < bars.length; i++) {
+                                    var h = bars[i] * (height - window.s(1));
+                                    var x = startX + i * (barW + gap);
+                                    var y = height - window.s(1) - h;
+
+                                    var pct = i / bars.length;
+                                    var clr;
+                                    if (window.displayVol > 100) {
+                                        if (pct < 0.5) clr = Qt.rgba(0.5, 0.05, 0.1, 1.0);
+                                        else if (pct < 0.75) clr = window.noirRed;
+                                        else if (pct < 0.9) clr = Qt.lighter(window.noirRed, 1.2);
+                                        else clr = Qt.lighter(window.red, 1.15);
+                                    } else {
+                                        if (pct < 0.5) clr = window.green;
+                                        else if (pct < 0.75) clr = window.yellow;
+                                        else if (pct < 0.9) clr = window.peach;
+                                        else clr = window.red;
+                                    }
+
+                                    ctx.fillStyle = clr.toString();
+                                    ctx.globalAlpha = 0.5 + 0.5 * bars[i];
+                                    ctx.beginPath();
+                                    ctx.roundRect(x, y, barW, h, window.s(1.5));
+                                    ctx.fill();
                                 }
                             }
                         }
@@ -715,8 +823,8 @@ Item {
                             ColumnLayout {
                                 anchors.centerIn: parent
                                 spacing: window.s(10)
-                                Text { Layout.alignment: Qt.AlignHCenter; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(32); color: window.surface2; text: "󰖁" }
-                                Text { Layout.alignment: Qt.AlignHCenter; font.family: "JetBrains Mono"; font.pixelSize: window.s(14); color: window.overlay0; text: "No active streams" }
+                                Text { Layout.alignment: Qt.AlignHCenter; font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(32); color: window.noirSurface2; text: "󰖁" }
+                                Text { Layout.alignment: Qt.AlignHCenter; font.family: "JetBrains Mono"; font.pixelSize: window.s(14); color: window.noirOverlay0; text: "No active streams" }
                             }
                         }
 
@@ -747,8 +855,8 @@ Item {
                             
                             property bool isHovered: cardMa.containsMouse && !isActiveNode
 
-                            color: isActiveNode ? window.tabColor : (isHovered ? "#0affffff" : "#05ffffff")
-                            border.color: isActiveNode ? window.tabColor : "#1affffff"
+                            color: isActiveNode ? window.tabColor : (isHovered ? Qt.rgba(0.3, 0.15, 0.4, 0.3) : Qt.rgba(0.15, 0.06, 0.22, 0.2))
+                            border.color: isActiveNode ? window.tabColor : Qt.rgba(0.5, 0.3, 0.7, 0.2)
                             border.width: isActiveNode ? 2 : 1
                             Behavior on border.color { ColorAnimation { duration: 300 } }
                             Behavior on color { ColorAnimation { duration: 300 } }
@@ -783,7 +891,7 @@ Item {
 
                                     Text {
                                         font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(22)
-                                        color: isActiveNode ? window.crust : window.text
+                                        color: isActiveNode ? window.noirCrust : window.noirText
                                         Behavior on color { ColorAnimation { duration: 200 } }
                                         text: {
                                             if (window.activeTab === "inputs") return "󰍬";
@@ -799,13 +907,13 @@ Item {
                                         Text {
                                             Layout.fillWidth: true; elide: Text.ElideRight
                                             font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(14)
-                                            color: isActiveNode ? window.crust : window.text
+                                            color: isActiveNode ? window.noirCrust : window.noirText
                                             text: model.description
                                         }
                                         Text {
                                             Layout.fillWidth: true; elide: Text.ElideRight
                                             font.family: "JetBrains Mono"; font.pixelSize: window.s(11)
-                                            color: isActiveNode ? Qt.darker(window.crust, 1.5) : window.subtext0
+                                            color: isActiveNode ? Qt.darker(window.noirCrust, 1.5) : window.noirSubtext0
                                             text: isActiveNode ? "Active Default" : model.name
                                         }
                                     }
@@ -821,14 +929,14 @@ Item {
 
                                     Rectangle {
                                         Layout.preferredWidth: window.s(32); Layout.preferredHeight: window.s(32); radius: window.s(16)
-                                        color: muteMa.containsMouse ? "#1affffff" : "transparent"
-                                        border.color: muteMa.containsMouse ? (model.mute ? window.overlay0 : window.tabColor) : "transparent"
+                                        color: muteMa.containsMouse ? Qt.rgba(0.5, 0.3, 0.7, 0.3) : "transparent"
+                                        border.color: muteMa.containsMouse ? (model.mute ? window.noirOverlay0 : window.amethyst) : "transparent"
                                         Behavior on color { ColorAnimation { duration: 150 } }
 
                                         Text {
                                             anchors.centerIn: parent
                                             font.family: "Iosevka Nerd Font"; font.pixelSize: window.s(18)
-                                            color: model.mute ? window.overlay0 : window.subtext0
+                                            color: model.mute ? window.noirOverlay0 : window.noirSubtext0
                                             text: model.mute || model.volume === 0 ? "󰖁" : (model.volume > 50 ? "󰕾" : "󰖀")
                                             Behavior on color { ColorAnimation { duration: 200 } }
                                         }
@@ -886,8 +994,8 @@ Item {
 
                                                 gradient: Gradient {
                                                     orientation: Gradient.Horizontal
-                                                    GradientStop { position: 0.0; color: model.mute ? window.surface2 : window.tabColor; Behavior on color { ColorAnimation { duration: 300 } } }
-                                                    GradientStop { position: 1.0; color: model.mute ? Qt.lighter(window.surface2, 1.15) : Qt.lighter(window.tabColor, 1.25); Behavior on color { ColorAnimation { duration: 300 } } }
+                                                    GradientStop { position: 0.0; color: model.mute ? window.noirSurface2 : window.tabColor; Behavior on color { ColorAnimation { duration: 600 } } }
+                                                    GradientStop { position: 1.0; color: model.mute ? Qt.lighter(window.noirSurface2, 1.15) : Qt.lighter(window.tabColor, 1.25); Behavior on color { ColorAnimation { duration: 600 } } }
                                                 }
                                             }
                                         }
@@ -919,7 +1027,7 @@ Item {
                                     Text {
                                         Layout.preferredWidth: window.s(35)
                                         font.family: "JetBrains Mono"; font.weight: Font.Bold; font.pixelSize: window.s(12)
-                                        color: window.subtext0
+                                        color: window.noirSubtext0
                                         text: model.volume + "%"
                                         horizontalAlignment: Text.AlignRight
                                     }

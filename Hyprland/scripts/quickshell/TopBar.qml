@@ -255,6 +255,12 @@ Variants {
             property string volPercent: "0%"
             property string volIcon: "󰕾"
             property bool isMuted: false
+            property int volNum: parseInt(barWindow.volPercent)
+            readonly property color noirRed: Qt.rgba(0.9, 0.15, 0.25, 1.0)
+            readonly property color noirRedGlow: Qt.rgba(0.7, 0.1, 0.2, 0.6)
+            readonly property color noirBg: "#0a0214"
+            readonly property color noirText: "#e8dff5"
+            property bool isBoosted: barWindow.volNum > 100
             
             property string batPercent: "100%"
             property string batIcon: "󰁹"
@@ -1417,17 +1423,17 @@ Variants {
                                 radius: barWindow.s(10); height: sysLayout.pillHeight;
                                 clip: true
 
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: barWindow.s(10)
-                                    opacity: barWindow.isSoundActive ? 1.0 : 0.0
-                                    Behavior on opacity { NumberAnimation { duration: 300 } }
-                                    gradient: Gradient {
-                                        orientation: Gradient.Horizontal
-                                        GradientStop { position: 0.0; color: mocha.peach }
-                                        GradientStop { position: 1.0; color: Qt.lighter(mocha.peach, 1.3) }
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: barWindow.s(10)
+                                        opacity: barWindow.isSoundActive ? 1.0 : 0.0
+                                        Behavior on opacity { NumberAnimation { duration: 300 } }
+                                        gradient: Gradient {
+                                            orientation: Gradient.Horizontal
+                                            GradientStop { position: 0.0; color: barWindow.isBoosted ? barWindow.noirRed : mocha.peach; Behavior on color { ColorAnimation { duration: 400 } } }
+                                            GradientStop { position: 1.0; color: barWindow.isBoosted ? barWindow.noirRedGlow : Qt.lighter(mocha.peach, 1.3); Behavior on color { ColorAnimation { duration: 400 } } }
+                                        }
                                     }
-                                }
                                 
                                 property real targetWidth: volLayoutRow.implicitWidth + barWindow.s(24)
                                 width: targetWidth
@@ -1451,14 +1457,16 @@ Variants {
                                     spacing: barWindow.s(8)
                                     Text { 
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: barWindow.volIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16); 
-                                        color: barWindow.isSoundActive ? mocha.base : mocha.subtext0 
+                                        text: barWindow.volIcon; font.family: "Iosevka Nerd Font"; font.pixelSize: barWindow.s(16); font.weight: Font.Black;
+                                        color: barWindow.isBoosted ? barWindow.noirText : (barWindow.isSoundActive ? barWindow.noirBg : mocha.subtext0);
+                                        Behavior on color { ColorAnimation { duration: 400 } }
                                     }
                                     Text { 
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: barWindow.volPercent; 
                                         font.family: "JetBrains Mono"; font.pixelSize: barWindow.s(13); font.weight: Font.Black; 
-                                        color: barWindow.isSoundActive ? mocha.base : mocha.text; 
+                                        color: barWindow.isBoosted ? barWindow.noirText : (barWindow.isSoundActive ? barWindow.noirBg : mocha.text);
+                                        Behavior on color { ColorAnimation { duration: 400 } }
                                     }
                                 }
                                 MouseArea { id: volMouse; hoverEnabled: true; anchors.fill: parent; onClicked: Quickshell.execDetached(["bash", "-c", "~/.config/hypr/scripts/qs_manager.sh toggle volume"]) }

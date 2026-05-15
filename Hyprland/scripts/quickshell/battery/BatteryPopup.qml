@@ -51,8 +51,47 @@ Item {
     readonly property color blue: _theme.blue
 
     // -------------------------------------------------------------------------
-    // STATE & POLLING
+    // AMETHYST NOIR THEME COLORS
     // -------------------------------------------------------------------------
+    readonly property color amethyst: Qt.rgba(0.702, 0.502, 1.0, 1.0)
+    readonly property color amethystDark: Qt.rgba(0.302, 0.102, 0.502, 1.0)
+    readonly property color amethystGlow: Qt.rgba(0.502, 0.302, 0.902, 0.4)
+    readonly property color noirRed: Qt.rgba(0.9, 0.15, 0.25, 1.0)
+    readonly property color noirRedGlow: Qt.rgba(0.7, 0.1, 0.2, 0.6)
+    readonly property color noirOverlay0: Qt.rgba(0.4, 0.25, 0.6, 0.7)
+    readonly property color noirSubtext0: Qt.rgba(0.6, 0.45, 0.85, 0.8)
+    readonly property color noirBg: Qt.rgba(0.04, 0.01, 0.08, 1.0)
+
+    // Profile-aware theme colors (Amethyst Noir)
+    readonly property color profileColor: {
+        if (powerProfile === "performance") return window.noirRed;
+        if (powerProfile === "power-saver") return window.noirOverlay0;
+        return window.amethyst;
+    }
+    readonly property color profileColorEnd: Qt.lighter(profileColor, 1.15)
+    readonly property color accentColor: window.profileColor
+
+    // Unified hue for Battery
+    readonly property color batColorStart: {
+        if (isCharging) return Qt.lighter(window.profileColor, 1.3);
+        if (batCapacity >= 70) return window.profileColor;
+        if (batCapacity >= 30) return Qt.darker(window.profileColor, 1.15);
+        return window.noirRed;
+    }
+    readonly property color batColorEnd: Qt.lighter(batColorStart, 1.15)
+
+    // Unified hue for Performance Profile
+    readonly property color profileStart: window.profileColor
+    readonly property color profileEnd: window.profileColorEnd
+
+    // Ambient Blobs
+    readonly property color ambientPrimary: window.batColorStart
+    readonly property color ambientSecondary: {
+        if (isCharging) return Qt.lighter(window.profileColor, 1.4);
+        if (batCapacity >= 70) return window.profileColorEnd;
+        if (batCapacity >= 30) return Qt.lighter(window.profileColor, 1.2);
+        return window.noirRedGlow;
+    }
     property int batCapacity: 0
     property string batStatus: "Unknown"
     property string powerProfile: "balanced"
@@ -61,6 +100,7 @@ Item {
     property int upMins: 0
 
     property real sysVolume: 0
+    property real volMax: Math.max(100, window.sysVolume)
     property bool sysMuted: false
     property real sysBrightness: 0
     
@@ -94,32 +134,6 @@ Item {
     Timer { id: briSyncDelay; interval: 800; onTriggered: window.isDraggingBri = false; triggeredOnStart: true; }
 
     readonly property bool isCharging: batStatus === "Charging"
-
-    // Unified hue for Battery
-    readonly property color batColorStart: {
-        if (isCharging) return window.green;
-        if (batCapacity >= 70) return window.blue;
-        if (batCapacity >= 30) return window.yellow;
-        return window.red;
-    }
-    readonly property color batColorEnd: Qt.lighter(batColorStart, 1.15)
-
-    // Unified hue for Performance Profile
-    readonly property color profileStart: {
-        if (powerProfile === "performance") return window.red;
-        if (powerProfile === "power-saver") return window.green;
-        return window.blue;
-    }
-    readonly property color profileEnd: Qt.lighter(profileStart, 1.15)
-
-    // Ambient Blobs - Based strictly on aesthetic pairs derived from battery state
-    readonly property color ambientPrimary: window.batColorStart
-    readonly property color ambientSecondary: {
-        if (isCharging) return window.sapphire;
-        if (batCapacity >= 70) return window.mauve;
-        if (batCapacity >= 30) return window.peach;
-        return window.maroon; 
-    }
 
     property real animCapacity: 0
     Behavior on animCapacity { NumberAnimation { duration: 1200; easing.type: Easing.OutQuint } }
@@ -496,7 +510,7 @@ Item {
                                                 Text {
                                                     font.family: "Iosevka Nerd Font"
                                                     font.pixelSize: window.s(14)
-                                                    color: window.mauve
+                                                    color: window.accentColor
                                                     text: window.isCollapsed(section) ? "󰅂" : "󰅀"
                                                     Behavior on rotation { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
                                                 }
@@ -818,7 +832,7 @@ Item {
                             width: centralCore.width + window.s(80)
                             height: width
                             radius: width / 2
-                            color: window.mauve
+                            color: window.accentColor
                             opacity: 0.06
                             z: 0
                             SequentialAnimation on scale {
@@ -950,7 +964,7 @@ Item {
 
                                         var liqGrad = ctx.createLinearGradient(0, liqSurface + waveAmp, 0, 0);
                                         liqGrad.addColorStop(0, Qt.lighter(window.batColorStart, 1.15).toString());
-                                        liqGrad.addColorStop(0.3, window.mauve.toString());
+                                        liqGrad.addColorStop(0.3, window.accentColor.toString());
                                         liqGrad.addColorStop(0.6, window.batColorStart.toString());
                                         liqGrad.addColorStop(1, Qt.darker(window.batColorEnd, 1.25).toString());
 
@@ -1052,12 +1066,12 @@ Item {
                                             eAlpha = Math.min(eAlpha, 0.6);
                                             ctx.beginPath();
                                             ctx.arc(ex, ey, es, 0, Math.PI * 2);
-                                            ctx.fillStyle = window.mauve.toString();
+                                            ctx.fillStyle = window.accentColor.toString();
                                             ctx.globalAlpha = eAlpha * 0.6;
                                             ctx.fill();
                                             ctx.beginPath();
                                             ctx.arc(ex, ey, es * 2.5, 0, Math.PI * 2);
-                                            ctx.fillStyle = window.mauve.toString();
+                                            ctx.fillStyle = window.accentColor.toString();
                                             ctx.globalAlpha = eAlpha * 0.15;
                                             ctx.fill();
                                         }
@@ -1072,7 +1086,7 @@ Item {
                                                 var ra = (1 - rPhase / 0.35) * 0.12;
                                                 ctx.beginPath();
                                                 ctx.arc(ccx, ccy, rr, 0, Math.PI * 2);
-                                                ctx.strokeStyle = window.mauve.toString();
+                                                ctx.strokeStyle = window.accentColor.toString();
                                                 ctx.lineWidth = window.s(1.5);
                                                 ctx.globalAlpha = ra;
                                                 ctx.stroke();
@@ -1088,7 +1102,7 @@ Item {
                                                 var cra = crPhase * 0.25;
                                                 ctx.beginPath();
                                                 ctx.arc(ccx, ccy, crr, 0, Math.PI * 2);
-                                                ctx.strokeStyle = window.mauve.toString();
+                                                ctx.strokeStyle = window.accentColor.toString();
                                                 ctx.lineWidth = window.s(3);
                                                 ctx.globalAlpha = cra;
                                                 ctx.stroke();
@@ -1098,7 +1112,7 @@ Item {
 
                                         // lava lamp blobs
                                         var blbTime = Date.now() / 2000;
-                                        var blbColors = [window.ambientPrimary, window.ambientSecondary, window.mauve];
+                                        var blbColors = [window.ambientPrimary, window.ambientSecondary, window.accentColor];
                                         for (var bi = 0; bi < 3; bi++) {
                                             var bx = ccx + Math.sin(blbTime * 0.5 + bi * 2.094) * ringR * 0.35;
                                             var by = ccy + Math.cos(blbTime * 0.7 + bi * 2.094) * ringR * 0.25 + window.s(10);
@@ -1160,7 +1174,7 @@ Item {
                                         ctx.lineWidth = window.s(6);
                                         ctx.beginPath();
                                         ctx.arc(centerX, centerY, radius + window.s(3), 0, 2 * Math.PI);
-                                        ctx.strokeStyle = window.mauve.toString();
+                                        ctx.strokeStyle = window.accentColor.toString();
                                         ctx.globalAlpha = 0.12;
                                         ctx.stroke();
                                         ctx.globalAlpha = 1.0;
@@ -1168,13 +1182,13 @@ Item {
                                         ctx.lineWidth = window.s(6);
                                         ctx.beginPath();
                                         ctx.arc(centerX, centerY, radius - window.s(3), 0, 2 * Math.PI);
-                                        ctx.strokeStyle = window.mauve.toString();
+                                        ctx.strokeStyle = window.accentColor.toString();
                                         ctx.globalAlpha = 0.08;
                                         ctx.stroke();
                                         ctx.globalAlpha = 1.0;
                                         
                                         var fillGrad = ctx.createLinearGradient(0, height, width, 0);
-                                        fillGrad.addColorStop(0, window.mauve.toString());
+                                        fillGrad.addColorStop(0, window.accentColor.toString());
                                         fillGrad.addColorStop(0.5, window.batColorStart.toString());
                                         fillGrad.addColorStop(1, window.batColorEnd.toString());
 
@@ -1190,7 +1204,7 @@ Item {
                                         ctx.beginPath();
                                         ctx.arc(centerX, centerY, radius, plasmaAngle - 0.4, plasmaAngle + 0.4);
                                         ctx.lineWidth = window.s(18);
-                                        ctx.strokeStyle = window.mauve.toString();
+                                        ctx.strokeStyle = window.accentColor.toString();
                                         ctx.globalAlpha = 0.12 + 0.05 * Math.sin(lt * 0.3);
                                         ctx.stroke();
                                         ctx.beginPath();
@@ -1266,10 +1280,9 @@ Item {
                                     
                                     Text {
                                         font.family: "Iosevka Nerd Font"
-                                        font.pixelSize: window.s(28)
-                                        color: window.isCharging || window.batCapacity < 30 ? window.batColorStart : window.mauve
-                                        text: window.isCharging ? "󰂄" : (window.batCapacity > 20 ? "󰁹" : "󰂃")
-                                        Behavior on color { ColorAnimation { duration: 400 } }
+                                        font.pixelSize: window.s(32)
+                                        color: window.text
+                                        text: window.isCharging ? "󰂄" : "󱐋"
                                     }
                                     
                                     Text {
@@ -1415,7 +1428,7 @@ Item {
                                             opacity: 0.2
                                             gradient: Gradient {
                                                 orientation: Gradient.Horizontal
-                                                GradientStop { position: 0.0; color: window.mauve; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                GradientStop { position: 0.0; color: window.accentColor; Behavior on color { ColorAnimation { duration: 300 } } }
                                                 GradientStop { position: 0.5; color: window.batColorStart; Behavior on color { ColorAnimation { duration: 300 } } }
                                                 GradientStop { position: 1.0; color: window.batColorEnd; Behavior on color { ColorAnimation { duration: 300 } } }
                                             }
@@ -1440,7 +1453,7 @@ Item {
 
                                                 gradient: Gradient {
                                                     orientation: Gradient.Horizontal
-                                                    GradientStop { position: 0.0; color: window.mauve; Behavior on color { ColorAnimation { duration: 300 } } }
+                                                    GradientStop { position: 0.0; color: window.accentColor; Behavior on color { ColorAnimation { duration: 300 } } }
                                                     GradientStop { position: 0.5; color: window.batColorStart; Behavior on color { ColorAnimation { duration: 300 } } }
                                                     GradientStop { position: 1.0; color: window.batColorEnd; Behavior on color { ColorAnimation { duration: 300 } } }
                                                 }
@@ -1465,118 +1478,6 @@ Item {
                                     }
                                 }
 
-                                // Volume Slider
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    spacing: window.s(15)
-
-                                    Rectangle {
-                                        Layout.preferredWidth: window.s(32)
-                                        Layout.preferredHeight: window.s(32)
-                                        radius: window.s(16)
-                                        color: volIconMa.containsMouse ? window.surface1 : "transparent"
-                                        border.color: volIconMa.containsMouse ? window.profileStart : "transparent"
-                                        Behavior on color { ColorAnimation { duration: 150 } }
-                                        Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: window.sysMuted || window.sysVolume === 0 ? "󰖁" : (window.sysVolume > 50 ? "󰕾" : "󰖀")
-                                            font.family: "Iosevka Nerd Font"
-                                            font.pixelSize: window.s(22)
-                                            color: window.sysMuted ? window.overlay0 : window.profileStart
-                                            Behavior on color { ColorAnimation { duration: 200 } }
-                                        }
-                                        MouseArea {
-                                            id: volIconMa
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: {
-                                                volSyncDelay.stop();
-                                                window.isDraggingVol = true; 
-                                                window.sysMuted = !window.sysMuted;
-                                                Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]);
-                                                volSyncDelay.restart();
-                                            }
-                                        }
-                                    }
-
-                                    Item {
-                                        Layout.fillWidth: true
-                                        height: window.s(18)
-                                        
-                                        Timer {
-                                            id: volCmdThrottle
-                                            interval: 50
-                                            property int targetPct: -1
-                                            onTriggered: {
-                                                if (targetPct >= 0) {
-                                                    if (targetPct > 0 && window.sysMuted) {
-                                                        window.sysMuted = false;
-                                                        Quickshell.execDetached(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "0"]);
-                                                    }
-                                                    Quickshell.execDetached(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", targetPct + "%"]);
-                                                    targetPct = -1;
-                                                }
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            height: parent.height + window.s(6)
-                                            width: (parent.width * (window.sysVolume / 100)) + window.s(12)
-                                            radius: window.s(12)
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            opacity: window.sysMuted ? 0.05 : 0.2
-                                            gradient: Gradient {
-                                                orientation: Gradient.Horizontal
-                                                GradientStop { position: 0.0; color: window.sysMuted ? window.surface2 : window.profileStart; Behavior on color { ColorAnimation { duration: 300 } } }
-                                                GradientStop { position: 1.0; color: window.sysMuted ? Qt.lighter(window.surface2, 1.15) : window.profileEnd; Behavior on color { ColorAnimation { duration: 300 } } }
-                                            }
-                                            Behavior on width { enabled: !window.isDraggingVol; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
-                                        }
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            radius: window.s(9)
-                                            color: window.surface1
-                                            border.color: window.surface2
-                                            border.width: 1
-                                            clip: true
-
-                                            Rectangle {
-                                                height: parent.height
-                                                width: parent.width * (window.sysVolume / 100)
-                                                radius: window.s(9)
-                                                opacity: window.sysMuted ? 0.5 : (volMa.containsMouse ? 1.0 : 0.85)
-                                                Behavior on opacity { NumberAnimation { duration: 200 } }
-                                                Behavior on width { enabled: !window.isDraggingVol; NumberAnimation { duration: 200; easing.type: Easing.OutQuint } }
-
-                                                gradient: Gradient {
-                                                    orientation: Gradient.Horizontal
-                                                    GradientStop { position: 0.0; color: window.sysMuted ? window.surface2 : window.profileStart; Behavior on color { ColorAnimation { duration: 300 } } }
-                                                    GradientStop { position: 1.0; color: window.sysMuted ? Qt.lighter(window.surface2, 1.15) : window.profileEnd; Behavior on color { ColorAnimation { duration: 300 } } }
-                                                }
-                                            }
-                                        }
-                                        MouseArea {
-                                            id: volMa
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onPressed: (mouse) => { volSyncDelay.stop(); window.isDraggingVol = true; updateVol(mouse.x); }
-                                            onPositionChanged: (mouse) => { if (pressed) updateVol(mouse.x); }
-                                            onReleased: { volSyncDelay.restart(); }
-                                            
-                                            function updateVol(mx) {
-                                                let pct = Math.max(0, Math.min(100, Math.round((mx / width) * 100)));
-                                                window.sysVolume = pct;
-                                                volCmdThrottle.targetPct = pct;
-                                                if (!volCmdThrottle.running) volCmdThrottle.start();
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
 

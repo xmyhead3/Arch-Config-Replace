@@ -5,7 +5,7 @@
 #  One-liner: bash -c "$(curl -fsSL https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh)"
 # ===========================================================================
 
-DOTS_VERSION="1.7.27"
+DOTS_VERSION="1.7.28"
 DOTS_VERSION_NAME=""
 
 set -e
@@ -844,6 +844,27 @@ XDG_RUNTIME_DIR="/run/user/$(id -u "$CURRENT_USER")" systemctl --user daemon-rel
 for unit in "${!TIMERS[@]}"; do
     XDG_RUNTIME_DIR="/run/user/$(id -u "$CURRENT_USER")" systemctl --user enable --now "$unit.timer" 2>/dev/null || true
 done
+
+# ─── AUDIO AUTOSWITCH SERVICE ──────────────────────────────────────────
+
+cat > "$HOME/.config/systemd/user/audio-autoswitch.service" << 'AUTOSWITCH'
+[Unit]
+Description=Auto-switch audio to external devices when plugged in
+After=pipewire-pulse.service
+BindsTo=pipewire-pulse.service
+
+[Service]
+Type=simple
+ExecStart=%h/.config/hypr/scripts/quickshell/watchers/audio_autoswitch.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=default.target
+AUTOSWITCH
+
+XDG_RUNTIME_DIR="/run/user/$(id -u "$CURRENT_USER")" systemctl --user daemon-reload 2>/dev/null || true
+XDG_RUNTIME_DIR="/run/user/$(id -u "$CURRENT_USER")" systemctl --user enable --now audio-autoswitch.service 2>/dev/null || true
 
 # ─── RELOAD HYPRLAND ──────────────────────────────────────────────────
 

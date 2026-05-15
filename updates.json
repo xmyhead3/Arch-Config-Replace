@@ -1,7 +1,25 @@
 {
-  "latest_version": "1.7.27",
+  "latest_version": "1.7.28",
   "videos": [],
   "changelog": [
+    {
+      "version": "1.7.28",
+      "changes": [
+        "ADDED: Amethyst Noir theme — always-on deep purple/indigo palette (noirBg, noirText, noirRed, noirOverlay0, noirSubtext0) across all popups",
+        "ADDED: 150% Auto-Boost — drag volume past 100% enables boost (red accent), drag below 100% disables, smooth tabColor interpolation amethyst->noirRed from 100-150%",
+        "ADDED: Position-based slider gradient — amethyst at 0-100%, smooth transition to noirRed at 100-150%",
+        "ADDED: Continuous bezier wave with Math.sin-based amplitude decay — wave amplitude smoothly reaches 0 at full volume",
+        "ADDED: Battery popup profile-based theming — performance=noirRed, balanced=amethyst, power-saver=noirOverlay0",
+        "ADDED: Battery orb — removed icon, shows percentage only (charging=󰂄, normal=󱐋)",
+        "ADDED: Audio auto-switch — headphones/Bluetooth become default on plug, revert to Built-in on unplug (audio_autoswitch.sh + systemd service)",
+        "ADDED: audio_autoswitch.service — systemd user service, auto-starts on login, restarts on failure",
+        "CHANGED: TopBar volume pill — noirBg text on peach bg, noirText on red bg, noirRed/noirRedGlow gradient when boosted",
+        "CHANGED: audio_wait.sh — timeout 2 fallback so top bar polls every 2s when wpctl changes don't trigger pactl events",
+        "FIXED: VolumePopup activeTab — declared as proper property string (was missing, broke tab switching)",
+        "REMOVED: Boost toggle button — boost is purely auto via drag threshold (no degrade animation needed)",
+        "REMOVED: Battery popup audio volume slider"
+      ]
+    },
     {
       "version": "1.7.27",
       "changes": [
