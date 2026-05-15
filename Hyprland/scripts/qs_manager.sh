@@ -43,6 +43,42 @@ build_manifest() {
 handle_wallpaper_prep() {
     mkdir -p "$THUMB_DIR"
 
+    # ─── ORPHAN PRUNE (synchronous — runs before QML populates grid) ───
+    THUMB_SOURCE_FILE="$THUMB_DIR/.source_dir"
+    if [ -f "$THUMB_SOURCE_FILE" ]; then
+        read -r CACHED_SRC < "$THUMB_SOURCE_FILE"
+        if [ "$CACHED_SRC" != "$SRC_DIR" ]; then
+            find "$THUMB_DIR" -maxdepth 1 -type f \
+                ! -name '.source_dir' ! -name '.manifest' -delete
+            echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
+            > "$MANIFEST"
+        fi
+    else
+        echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
+        > "$MANIFEST"
+    fi
+
+    [ ! -f "$MANIFEST" ] && build_manifest
+
+    SRC_LIST=$(mktemp)
+    find "$SRC_DIR" -maxdepth 1 -type f \
+        \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
+           -o -iname "*.gif" -o -iname "*.mp4" -o -iname "*.mkv" \
+           -o -iname "*.mov" -o -iname "*.webm" \) \
+        -printf "%f\n" | sort > "$SRC_LIST"
+
+    # Delete orphaned thumbnails (deleted source files)
+    comm -23 \
+        <(sed 's/^000_//' "$MANIFEST" | sort) \
+        "$SRC_LIST" \
+    | while read -r orphan; do
+        rm -f "$THUMB_DIR/$orphan" "$THUMB_DIR/000_$orphan"
+        sed -i "/^${orphan}$/d;/^000_${orphan}$/d" "$MANIFEST"
+    done
+
+    rm -f "$SRC_LIST"
+
+    # ─── THUMBNAIL GENERATION (background — slow) ────────────────────
     (
         export THUMB_DIR SRC_DIR MANIFEST
 
@@ -73,41 +109,12 @@ handle_wallpaper_prep() {
         }
         export -f process_one
 
-        # Source dir change — nuke everything and rebuild
-        THUMB_SOURCE_FILE="$THUMB_DIR/.source_dir"
-        if [ -f "$THUMB_SOURCE_FILE" ]; then
-            read -r CACHED_SRC < "$THUMB_SOURCE_FILE"
-            if [ "$CACHED_SRC" != "$SRC_DIR" ]; then
-                find "$THUMB_DIR" -maxdepth 1 -type f \
-                    ! -name '.source_dir' ! -name '.manifest' -delete
-                echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
-                > "$MANIFEST"  # reset manifest
-            fi
-        else
-            echo "$SRC_DIR" > "$THUMB_SOURCE_FILE"
-            > "$MANIFEST"
-        fi
-
-        # Build manifest if missing
-        [ ! -f "$MANIFEST" ] && build_manifest
-
-        # Get current src files (one find, sorted)
         SRC_LIST=$(mktemp)
         find "$SRC_DIR" -maxdepth 1 -type f \
             \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \
                -o -iname "*.gif" -o -iname "*.mp4" -o -iname "*.mkv" \
                -o -iname "*.mov" -o -iname "*.webm" \) \
             -printf "%f\n" | sort > "$SRC_LIST"
-
-        # Orphans: in manifest but not in src anymore
-        comm -23 \
-            <(sed 's/^000_//' "$MANIFEST" | sort) \
-            "$SRC_LIST" \
-        | while read -r orphan; do
-            rm -f "$THUMB_DIR/$orphan" "$THUMB_DIR/000_$orphan"
-            # Remove from manifest
-            sed -i "/^${orphan}$/d;/^000_${orphan}$/d" "$MANIFEST"
-        done
 
         # New files: in src but not in manifest
         comm -23 \
@@ -116,10 +123,9 @@ handle_wallpaper_prep() {
         | xargs -P 8 -I{} bash -c 'process_one "$SRC_DIR/$@"' _ {}
 
         rm -f "$SRC_LIST"
-
     ) </dev/null >/dev/null 2>&1 &
 
-    # awww/mpvpaper detection (unchanged, fast)
+    # awww/mpvpaper detection
     TARGET_THUMB=""
     CURRENT_SRC=""
     if pgrep -a "mpvpaper" > /dev/null; then
