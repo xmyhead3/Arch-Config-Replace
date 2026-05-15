@@ -121,6 +121,21 @@ read -r KEEP_WALLPAPERS
 KEEP_WALLPAPERS="${KEEP_WALLPAPERS:-Y}"
 
 echo ""
+echo -e "  ${Y}?${N} Configure weather? (OpenWeatherMap API key + city)"
+echo -e "    Get a free key at ${B}https://openweathermap.org/api${N}"
+echo -e "    Find your city ID at ${B}https://openweathermap.org/find${N}"
+echo -e "  "
+echo -e "  ${Y}?${N} Enter your OpenWeatherMap API key (or press Enter to skip): "
+read -r WEATHER_API_KEY
+if [ -n "$WEATHER_API_KEY" ]; then
+    echo -e "  ${Y}?${N} Enter your numeric city ID (e.g. 421821 for London): "
+    read -r WEATHER_CITY_ID
+    echo -e "  ${Y}?${N} Unit: metric (C) / imperial (F) / standard (K)? [metric] "
+    read -r WEATHER_UNIT
+    WEATHER_UNIT="${WEATHER_UNIT:-metric}"
+fi
+
+echo ""
 
 # ─── CHECK PACKAGE MANAGER ─────────────────────────────────────────────
 
@@ -790,6 +805,19 @@ find "$HOME/.config" "$HOME/Pictures/Wallpapers" -name "# THE LOCATIONS.txt" -de
 mkdir -p "$HOME/.local/state"
 echo "LOCAL_VERSION=\"$DOTS_VERSION\"" > "$HOME/.local/state/wiferice-version"
 echo "LOCAL_VERSION_NAME=\"$DOTS_VERSION_NAME\"" >> "$HOME/.local/state/wiferice-version"
+
+# ─── WEATHER CONFIG ─────────────────────────────────────────────────────
+
+if [ -n "$WEATHER_API_KEY" ] && [ -n "$WEATHER_CITY_ID" ]; then
+    WEATHER_ENV="$HOME/.config/hypr/scripts/quickshell/calendar/.env"
+    mkdir -p "$(dirname "$WEATHER_ENV")"
+    cat > "$WEATHER_ENV" << EOF
+OPENWEATHER_KEY='$WEATHER_API_KEY'
+OPENWEATHER_CITY_ID='$WEATHER_CITY_ID'
+OPENWEATHER_UNIT='$WEATHER_UNIT'
+EOF
+    echo -e "  ${G}✓${N} Weather configured (city ID: $WEATHER_CITY_ID, unit: $WEATHER_UNIT)"
+fi
 
 # ─── FIX PAM AUTH FOR LOCK SCREEN & POLKIT ──────────────────────────────
 
