@@ -245,14 +245,16 @@ else
     echo -e "  ${R}!${N} Himeno wallpaper not found in repo — skipping"
 fi
 
-if [[ "$KEEP_WALLPAPERS" =~ ^[Yy]$ ]]; then
-    echo -e "  ${Y}─${N} Keeping existing wallpapers (user choice)"
-else
+# Lock screen wallpaper — always deploy the default, never touch user's ~/.Wallpapers
 if [ -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" ]; then
-    # Lock screen wallpaper — always deploy the default, never touch user's ~/.Wallpapers
     sudo mkdir -p /usr/share/wallpapers
     sudo cp -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" /usr/share/wallpapers/lock.png
     echo -e "  ${Y}─${N} System lockscreen set — place your own image in ~/.Wallpapers/lock.* to override"
+fi
+
+if [[ "$KEEP_WALLPAPERS" =~ ^[Yy]$ ]]; then
+    echo -e "  ${Y}─${N} Keeping existing wallpapers (user choice)"
+else
     # SDDM login theme — only deploy if user chose to overwrite
     if [[ "$SDDM_OVERWRITE" =~ ^[Yy]$ ]] && [ -d "$INSTALL_DIR/SDDM/matugen-minimal" ] && command -v sudo &>/dev/null; then
         sudo mkdir -p /usr/share/sddm/themes/matugen-minimal
@@ -277,7 +279,6 @@ if [ -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" ]; then
     else
         echo -e "  ${Y}─${N} SDDM theme kept (user choice)"
     fi
-fi
 
 # Clear wallpaper picker cache on first install or when folder was empty (user deleted all)
 if [ ! -d "$HOME/Pictures/Wallpapers" ] || [ -z "$(ls -A "$HOME/Pictures/Wallpapers" 2>/dev/null)" ]; then
