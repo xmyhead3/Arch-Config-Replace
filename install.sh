@@ -169,7 +169,7 @@ fi
 
 echo ""
 echo -e "  ${Y}▶${N}  Override SDDM login screen with theme & wallpaper?"
-echo -e "     ${Y}(No = keep your current login screen as-is)${N}  [y/N] "
+echo -e "     ${R}(Yes = wipes existing theme folder, replaces with ours)${N}  [y/N] "
 read -r SDDM_OVERWRITE
 echo ""
 
@@ -264,13 +264,14 @@ if [[ "$KEEP_WALLPAPERS" =~ ^[Yy]$ ]]; then
 else
     # SDDM login theme — only deploy if user chose to overwrite
     if [[ "$SDDM_OVERWRITE" =~ ^[Yy]$ ]] && [ -d "$INSTALL_DIR/SDDM/matugen-minimal" ] && command -v sudo &>/dev/null; then
+        sudo rm -rf /usr/share/sddm/themes/matugen-minimal
         sudo mkdir -p /usr/share/sddm/themes/matugen-minimal
         sudo cp -rf "$INSTALL_DIR/SDDM/matugen-minimal/"* /usr/share/sddm/themes/matugen-minimal/
         sudo cp -f "$INSTALL_DIR/SDDM-Wallpaper/wallpaper.png" /usr/share/sddm/themes/matugen-minimal/
         sudo mkdir -p /etc/sddm.conf.d
         echo "[Theme]" | sudo tee /etc/sddm.conf.d/theme.conf > /dev/null
         echo "Current=matugen-minimal" | sudo tee -a /etc/sddm.conf.d/theme.conf > /dev/null
-        echo -e "  ${G}✓${N} SDDM theme 'matugen-minimal' deployed with wallpaper"
+        echo -e "  ${G}✓${N} SDDM theme 'matugen-minimal' fully replaced with ours"
     elif [ -d "$INSTALL_DIR/SDDM/matugen-minimal" ] && command -v sudo &>/dev/null; then
         # Only deploy theme files if user chose to keep wallpaper—never overwrite their wallaper
         if [ ! -d /usr/share/sddm/themes/matugen-minimal ]; then
