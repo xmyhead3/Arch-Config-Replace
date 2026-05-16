@@ -138,18 +138,22 @@ echo ""
 echo -e "  ${G}◉${N}  Keep ${G}keybinds & shortcuts${N}?  [Y/n] "
 read -r KEEP_KEYBINDS
 KEEP_KEYBINDS="${KEEP_KEYBINDS:-Y}"
+[[ "$KEEP_KEYBINDS" =~ ^[Yy](es)?$ ]] && KEEP_KEYBINDS="Y" || KEEP_KEYBINDS="N"
 
 echo -e "  ${G}◉${N}  Keep ${G}terminal & editor${N} (Kitty, Neovim)?  [Y/n] "
 read -r KEEP_TERM_EDITOR
 KEEP_TERM_EDITOR="${KEEP_TERM_EDITOR:-Y}"
+[[ "$KEEP_TERM_EDITOR" =~ ^[Yy](es)?$ ]] && KEEP_TERM_EDITOR="Y" || KEEP_TERM_EDITOR="N"
 
 echo -e "  ${G}◉${N}  Keep ${G}desktop configs${N} (Rofi, SwayNC, Matugen)?  [Y/n] "
 read -r KEEP_DESKTOP
 KEEP_DESKTOP="${KEEP_DESKTOP:-Y}"
+[[ "$KEEP_DESKTOP" =~ ^[Yy](es)?$ ]] && KEEP_DESKTOP="Y" || KEEP_DESKTOP="N"
 
 echo -e "  ${G}◉${N}  Keep ${G}wallpapers${N}?  [Y/n] "
 read -r KEEP_WALLPAPERS
 KEEP_WALLPAPERS="${KEEP_WALLPAPERS:-Y}"
+[[ "$KEEP_WALLPAPERS" =~ ^[Yy](es)?$ ]] && KEEP_WALLPAPERS="Y" || KEEP_WALLPAPERS="N"
 
 echo ""
 echo "  ╭──────────────────────────────────────╮"
@@ -171,6 +175,8 @@ echo ""
 echo -e "  ${Y}▶${N}  Override SDDM login screen with theme & wallpaper?"
 echo -e "     ${R}(Yes = wipes existing theme folder, replaces with ours)${N}  [y/N] "
 read -r SDDM_OVERWRITE
+SDDM_OVERWRITE="${SDDM_OVERWRITE:-N}"
+[[ "$SDDM_OVERWRITE" =~ ^[Yy](es)?$ ]] && SDDM_OVERWRITE="Y" || SDDM_OVERWRITE="N"
 echo ""
 
 # ─── CHECK PACKAGE MANAGER ─────────────────────────────────────────────
