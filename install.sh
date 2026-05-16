@@ -138,22 +138,22 @@ echo ""
 echo -e "  ${G}◉${N}  Keep ${G}keybinds & shortcuts${N}?  [Y/n] "
 read -r KEEP_KEYBINDS
 KEEP_KEYBINDS="${KEEP_KEYBINDS:-Y}"
-[[ "$KEEP_KEYBINDS" =~ ^[Yy](es)?$ ]] && KEEP_KEYBINDS="Y" || KEEP_KEYBINDS="N"
+case "${KEEP_KEYBINDS,,}" in y|yes) KEEP_KEYBINDS="Y" ;; n|no) KEEP_KEYBINDS="N" ;; *) KEEP_KEYBINDS="Y" ;; esac
 
 echo -e "  ${G}◉${N}  Keep ${G}terminal & editor${N} (Kitty, Neovim)?  [Y/n] "
 read -r KEEP_TERM_EDITOR
 KEEP_TERM_EDITOR="${KEEP_TERM_EDITOR:-Y}"
-[[ "$KEEP_TERM_EDITOR" =~ ^[Yy](es)?$ ]] && KEEP_TERM_EDITOR="Y" || KEEP_TERM_EDITOR="N"
+case "${KEEP_TERM_EDITOR,,}" in y|yes) KEEP_TERM_EDITOR="Y" ;; n|no) KEEP_TERM_EDITOR="N" ;; *) KEEP_TERM_EDITOR="Y" ;; esac
 
 echo -e "  ${G}◉${N}  Keep ${G}desktop configs${N} (Rofi, SwayNC, Matugen)?  [Y/n] "
 read -r KEEP_DESKTOP
 KEEP_DESKTOP="${KEEP_DESKTOP:-Y}"
-[[ "$KEEP_DESKTOP" =~ ^[Yy](es)?$ ]] && KEEP_DESKTOP="Y" || KEEP_DESKTOP="N"
+case "${KEEP_DESKTOP,,}" in y|yes) KEEP_DESKTOP="Y" ;; n|no) KEEP_DESKTOP="N" ;; *) KEEP_DESKTOP="Y" ;; esac
 
 echo -e "  ${G}◉${N}  Keep ${G}wallpapers${N}?  [Y/n] "
 read -r KEEP_WALLPAPERS
 KEEP_WALLPAPERS="${KEEP_WALLPAPERS:-Y}"
-[[ "$KEEP_WALLPAPERS" =~ ^[Yy](es)?$ ]] && KEEP_WALLPAPERS="Y" || KEEP_WALLPAPERS="N"
+case "${KEEP_WALLPAPERS,,}" in y|yes) KEEP_WALLPAPERS="Y" ;; n|no) KEEP_WALLPAPERS="N" ;; *) KEEP_WALLPAPERS="Y" ;; esac
 
 echo ""
 echo "  ╭──────────────────────────────────────╮"
@@ -176,7 +176,7 @@ echo -e "  ${Y}▶${N}  Override SDDM login screen with theme & wallpaper?"
 echo -e "     ${R}(Yes = wipes existing theme folder, replaces with ours)${N}  [y/N] "
 read -r SDDM_OVERWRITE
 SDDM_OVERWRITE="${SDDM_OVERWRITE:-N}"
-[[ "$SDDM_OVERWRITE" =~ ^[Yy](es)?$ ]] && SDDM_OVERWRITE="Y" || SDDM_OVERWRITE="N"
+case "${SDDM_OVERWRITE,,}" in y|yes) SDDM_OVERWRITE="Y" ;; n|no) SDDM_OVERWRITE="N" ;; *) SDDM_OVERWRITE="N" ;; esac
 echo ""
 
 # ─── CHECK PACKAGE MANAGER ─────────────────────────────────────────────
