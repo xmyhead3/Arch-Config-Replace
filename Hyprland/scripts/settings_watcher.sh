@@ -105,6 +105,9 @@ compile_settings() {
     # Only reload hyprland if actual configuration logic changed
     if [ "$OLD_HASH" != "$NEW_HASH" ]; then
         hyprctl reload
+        # hyprctl reload does NOT apply monitor scale changes at runtime
+        # Apply each monitor directly to ensure scale takes effect
+        jq -r '.monitors[]? | "hyprctl keyword monitor \(.name),\(.resW)x\(.resH)@\(.rate),\(.x)x\(.y),\(.scale)"' "$SETTINGS_FILE" 2>/dev/null | bash || true
     fi
 }
 
