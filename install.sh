@@ -244,72 +244,58 @@ mkdir -p "$HYPR_TARGET/scripts"
 cp -f "$INSTALL_DIR/Hyprland/hyprland.conf" "$HYPR_TARGET/" 2>/dev/null || true
 cp -f "$INSTALL_DIR/Hyprland/hypridle.conf" "$HYPR_TARGET/" 2>/dev/null || true
 cp -f "$INSTALL_DIR/Hyprland/colors.conf" "$HYPR_TARGET/" 2>/dev/null || true
-# settings.json — NEVER overwrite after v1.7.48 migration is done
-SETTINGS_MIGRATED_FLAG="$HYPR_TARGET/.settings_v148_migrated"
+# settings.json — always overwritten to push latest monitor/scaling fixes to all users
+# User's current settings.json is backed up in case of emergency rollback
 
-# v1.7.48 ONE-TIME migration: Fix settings.json broken by v1.7.45/46 overwrite bug.
-# After this migration runs once, the flag file prevents any future overwrites.
-if [ ! -f "$HYPR_TARGET/settings.json" ]; then
-    # ── Fresh install – deploy with auto-detect ──
-    _deploy_settings="fresh"
-elif [ ! -f "$SETTINGS_MIGRATED_FLAG" ]; then
-    # ── Existing install – ONE-TIME migration to fix broken settings from bug ──
-    cp -f "$HYPR_TARGET/settings.json" "/tmp/wiferice_user_settings_backup_148.json" 2>/dev/null || true
-    echo -e "  ${Y}─${N} One-time migration: backing up your current settings.json"
-    _deploy_settings="migrate"
+# Backup current settings.json before overwriting (safety net for keybinds/startup)
+if [ -f "$HYPR_TARGET/settings.json" ]; then
+    cp -f "$HYPR_TARGET/settings.json" "/tmp/wiferice_settings_backup.json" 2>/dev/null || true
+fi
+
+# Copy default template as base
+cp -f "$INSTALL_DIR/Hyprland/settings.json" "/tmp/wiferice_settings_template.json" 2>/dev/null || true
+
+# Auto-detect the first connected monitor via sysfs
+DETECTED_MONITOR=""
+for drm_path in /sys/class/drm/*/status; do
+    if [ -f "$drm_path" ] && [ "$(cat "$drm_path" 2>/dev/null)" = "connected" ]; then
+        connector="$(basename "$(dirname "$drm_path")" | sed 's/^card[0-9]*-//')"
+        if [ -n "$connector" ]; then
+            DETECTED_MONITOR="$connector"
+            break
+        fi
+    fi
+done
+
+if [ -n "$DETECTED_MONITOR" ] && command -v jq &>/dev/null; then
+    # Inject the real monitor name into the default config
+    jq --arg mon "$DETECTED_MONITOR" '.monitors[0].name = $mon' \
+        "/tmp/wiferice_settings_template.json" > "/tmp/wiferice_settings_new.json" 2>/dev/null && \
+    cp -f "/tmp/wiferice_settings_new.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
+    rm -f "/tmp/wiferice_settings_new.json" 2>/dev/null || true
+    echo -e "  ${G}✓${N} Monitor auto-detected: ${DETECTED_MONITOR}"
 else
-    _deploy_settings="skip"
-fi
-
-if [ "$_deploy_settings" != "skip" ]; then
-    # Backup the default template
-    cp -f "$INSTALL_DIR/Hyprland/settings.json" "/tmp/wiferice_settings_template.json" 2>/dev/null || true
-
-    # Auto-detect the first connected monitor via sysfs
-    DETECTED_MONITOR=""
-    for drm_path in /sys/class/drm/*/status; do
-        if [ -f "$drm_path" ] && [ "$(cat "$drm_path" 2>/dev/null)" = "connected" ]; then
-            connector="$(basename "$(dirname "$drm_path")" | sed 's/^card[0-9]*-//')"
-            if [ -n "$connector" ]; then
-                DETECTED_MONITOR="$connector"
-                break
-            fi
-        fi
-    done
-
-    if [ -n "$DETECTED_MONITOR" ] && command -v jq &>/dev/null; then
-        # Inject the real monitor name into the default config
-        jq --arg mon "$DETECTED_MONITOR" '.monitors[0].name = $mon' \
-            "/tmp/wiferice_settings_template.json" > "/tmp/wiferice_settings_new.json" 2>/dev/null && \
-        cp -f "/tmp/wiferice_settings_new.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
-        rm -f "/tmp/wiferice_settings_new.json" 2>/dev/null || true
-        echo -e "  ${G}✓${N} Monitor auto-detected: ${DETECTED_MONITOR}"
+    # Fallback: deploy the default template unchanged
+    cp -f "/tmp/wiferice_settings_template.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
+    if [ -n "$DETECTED_MONITOR" ]; then
+        echo -e "  ${Y}─${N} Monitor detected ($DETECTED_MONITOR) but jq not available — using default settings"
     else
-        # Fallback: deploy the default template unchanged
-        cp -f "/tmp/wiferice_settings_template.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
-        if [ -n "$DETECTED_MONITOR" ]; then
-            echo -e "  ${Y}─${N} Monitor detected ($DETECTED_MONITOR) but jq not available — using default settings"
-        else
-            echo -e "  ${Y}─${N} No monitor detected via sysfs — using default settings (eDP-1)"
-        fi
+        echo -e "  ${Y}─${N} No monitor detected via sysfs — using default settings (eDP-1)"
     fi
-    rm -f "/tmp/wiferice_settings_template.json" 2>/dev/null || true
-
-    # Final validation: if settings.json is empty or invalid JSON, restore from backup
-    if ! jq empty "$HYPR_TARGET/settings.json" 2>/dev/null; then
-        if [ -f "/tmp/wiferice_user_settings_backup_148.json" ]; then
-            echo -e "  ${R}!${N} Generated settings.json is invalid — restoring your previous settings"
-            cp -f "/tmp/wiferice_user_settings_backup_148.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
-        else
-            echo -e "  ${R}!${N} Generated settings.json is invalid — deploying safe default"
-            cp -f "$INSTALL_DIR/Hyprland/settings.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
-        fi
-    fi
-
-    # Mark migration as done (for existing installs) so future versions never overwrite
-    touch "$SETTINGS_MIGRATED_FLAG" 2>/dev/null || true
 fi
-echo -e "  ${G}✓${N} Hyprland core config deployed"
+rm -f "/tmp/wiferice_settings_template.json" 2>/dev/null || true
+
+# Final validation: if settings.json is empty or invalid JSON, restore from backup
+if ! jq empty "$HYPR_TARGET/settings.json" 2>/dev/null; then
+    if [ -f "/tmp/wiferice_settings_backup.json" ]; then
+        echo -e "  ${R}!${N} Generated settings.json is invalid — restoring your previous settings"
+        cp -f "/tmp/wiferice_settings_backup.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
+    else
+        echo -e "  ${R}!${N} Generated settings.json is invalid — deploying safe default"
+        cp -f "$INSTALL_DIR/Hyprland/settings.json" "$HYPR_TARGET/settings.json" 2>/dev/null || true
+    fi
+fi
+echo -e "  ${G}✓${N} settings.json deployed (overwritten)"
 
 # Keybinds
 if [[ "$KEEP_KEYBINDS" =~ ^[Nn]$ ]]; then
