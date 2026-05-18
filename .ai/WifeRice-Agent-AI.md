@@ -633,10 +633,60 @@ Think about architecture, user experience, stability, and elegance. Challenge ba
 - **WifeRice-Website:** `changelog.html`, `components.html`, `faq.html`, `features.html`, `home.html`, `install-arch-dualboot.html`, `install-arch-fullwipe.html`, `install-arch.html`, `install-dots.html`, `keybinds.html`, `screenshots.html`, `showcase.html`
 
 ### Current Versions
-- `updates.json latest_version`: **1.7.51** (all v1.7.43–v1.7.51 changelog entries exist)
-- Website changelog: complete through **v1.7.51** (2026-05-18)
+- `updates.json latest_version`: **1.7.52** (all new features: Caffeine, Night Light, DND, Power Profile, Quick Notes, Workspace Overview, Gaming Mode, System Monitor, Theme Profiles, VPN Manager)
+- Website changelog: complete through **v1.7.52** (2026-05-18)
 - Website "Last updated": all **2026-05-18**
 - settings.json policy everywhere: **"updated every release with backup to /tmp/"**
+
+---
+
+## 🚀 FEATURE REFERENCE — Quick Toggles & Popups (v1.7.52)
+
+### TopBar Toggle Buttons (right side)
+| Icon | Feature | Script | What it does |
+|------|---------|--------|-------------|
+| ☕/ | **Caffeine** | `toggle_caffeine.sh` | Prevents system suspend via `systemd-inhibit`. Glows when active. |
+| 🌙 | **Night Light** | `toggle_nightlight.sh` | Blue light filter via `wlsunset` (auto-installs if missing). 3500K warm tint. |
+| 🔇/󰂚 | **Do Not Disturb** | `toggle_dnd.sh` | Suppresses QuickShell notification popups. Toggles `~/.cache/qs_dnd` flag. |
+| ⚡/🚀/🔋 | **Power Profile** | `toggle_powerprofile.sh` | Cycles: Balanced → Power-Saver → Performance. Uses `powerprofilesctl` or `cpupower`. |
+| 🎮 (dims) | **Gaming Mode** | `toggle_gaming.sh` | Disables compositor (animations/blur/shadows), sets performance governor, enables DND + Caffeine. |
+| 🔒 (dims) | **VPN** | `toggle_vpn.sh` | Toggles first WireGuard VPN detected in NetworkManager. |
+
+### TopBar Utility Buttons (left side, next to settings)
+| Icon | Feature | Keybind | Script/Popup |
+|------|---------|---------|-------------|
+| 󰗨 | **Quick Notes** | `Super+Shift+N` | `quickshell/quicknotes/QuickNotesPopup.qml` — floating text editor, saves to `~/Notes.md`, Esc to close |
+| 󰻠 | **System Monitor** | `Super+Shift+M` | `quickshell/sysmon/SysMonPopup.qml` — CPU/RAM/disk bars with live 2s polling |
+| ⃞ | **Workspace Overview** | `Super+Shift+W` | `quickshell/workspaceoverview/WorkspaceOverview.qml` — visual grid of all workspaces with window lists |
+
+### Keybinds Summary
+| Keybind | Action |
+|---------|--------|
+| `Super+Shift+N` | Quick Notes popup |
+| `Super+Shift+M` | System Monitor popup |
+| `Super+Shift+W` | Workspace Overview |
+| `Super+Shift+G` | Gaming Mode toggle |
+| `Super+Shift+V` | VPN toggle |
+| `Super+Shift+P` | Theme Profile management |
+
+### Theme Profiles
+- `theme_profiles.sh list` — show saved profiles
+- `theme_profiles.sh save <name>` — save current state (wallpaper, power profile, toggles)
+- `theme_profiles.sh load <name>` — restore a saved profile
+- Profiles stored in `~/.config/hypr/theme_profiles/*.json`
+
+### State Files (all in `~/.cache/`)
+- `qs_caffeine`, `qs_nightlight`, `qs_dnd`, `qs_gaming` — "active"/"inactive" or "1"/"0"
+- `qs_powerprofile` — "balanced"/"performance"/"power-saver"  
+- `qs_caffeine_pid`, `qs_nightlight_pid` — process PID files
+- TopBar polls these every 2-5s via QML `Process` + `Timer`
+
+### Architecture
+- Each toggle is a standalone bash script in `~/.config/hypr/scripts/toggle_*.sh`
+- State is file-based (`~/.cache/qs_*`) — no daemon needed, survives power loss
+- TopBar reads state via `Process` QML components with `StdioCollector`
+- Popups run as separate `quickshell -p` processes (standalone PanelWindow)
+- Keybinds in `keybindings.conf` dispatch directly to scripts or `quickshell -p`
 
 ---
 
