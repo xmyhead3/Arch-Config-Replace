@@ -2593,7 +2593,7 @@ Item {
                             onClicked: {
                                 if (root.updateStatusText.includes("available")) {
                                     let url = "https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh";
-                                    let cmd = "if command -v kitty >/dev/null 2>&1; then kitty --hold bash -c \"$(curl -fsSL " + url + ")\"; else bash -c \"$(curl -fsSL " + url + ")\"; fi";
+                                    let cmd = "if command -v kitty >/dev/null 2>&1; then kitty --hold bash -c 'eval \"$(curl -fsSL " + url + ")\"'; else ${TERM:-xterm} -hold -e bash -c 'eval \"$(curl -fsSL " + url + ")\"'; fi";
                                     Quickshell.execDetached(["bash", "-c", cmd]);
                                 }
                             }
@@ -2626,7 +2626,7 @@ Item {
                         spacing: root.s(6)
 
                         model: ListModel {
-                            ListElement { version: "v1.7.49"; title: "settings.json: Always Overwrite + Auto-Detect Monitor"; desc: "settings.json overwritten every update with auto-detected monitor name"; icon: "󰒃"; clr: "blue"; detail: "settings.json is NOW OVERWRITTEN on every update — users get latest monitor config & scaling fixes automatically. Previous settings.json backed up to /tmp/ before overwrite. Auto-detects monitor name via sysfs (no more hardcoded eDP-1). Falls back if detection fails or jq missing. Final validation ensures valid JSON; restores backup if invalid." }
+                            ListElement { version: "v1.7.49"; title: "CRITICAL: Fix Update Terminal Crash + settings.json Overwrite"; desc: "Fixed update button quoting bug that crashed terminal, settings.json always overwritten"; icon: "󰒃"; clr: "red"; detail: "CRITICAL FIX: GuidePopup.qml update buttons used double quotes for bash -c \"$(curl ...)\" — the install.sh contains double quotes (e.g., DOTS_VERSION=\"1.7.49\"), which terminated the string prematurely and crashed the terminal. CHANGED: now uses single quotes + eval, matching the working UpdaterPopup.qml pattern. ALSO: Always overwrite settings.json on every update with auto-detected monitor name. Backup to /tmp/ before overwrite. Final validation restores backup if invalid." }
                             ListElement { version: "v1.7.48"; title: "Auto-Detect Monitor Name on Fresh Install"; desc: "settings.json now uses real monitor name from sysfs instead of hardcoded eDP-1"; icon: "󰒃"; clr: "blue"; detail: "Auto-detect monitor name on fresh install — reads first connected display from sysfs, injects real name into settings.json instead of hardcoded eDP-1. Falls back to default if detection fails or jq is missing. Final validation checks JSON is valid before deploying." }
                             ListElement { version: "v1.7.47"; title: "settings.json Never Overwritten on Update"; desc: "Introduced: protect settings.json from being overwritten"; icon: "󰒃"; clr: "yellow"; detail: "CHANGED: settings.json was only deployed if not exists — preserving user keybinds, startup apps, and monitor config. (Reverted in v1.7.49 — now overwritten every time to push monitor/scaling fixes to all users, with backup safety net.)" }
                             ListElement { version: "v1.7.46"; title: "Audio Auto-Switch: Multi-Device Support + Telemetry Cleanup"; desc: "Multi-device audio switching fix, telemetry cleanup on opt-out"; icon: "󰕾"; clr: "green"; detail: "FIXED: audio_autoswitch.sh reacted to EVERY pactl event — including user-initiated default-sink changes. If you manually switched from USB headset to Bluetooth headphones, any subsequent event (volume change, app opening) flipped back to the first external device. CHANGED: Now only reacts to sink 'new' (device plugged) and 'remove' (device unplugged) events — user manual switches respected. ADDED: Startup check, helper functions. Telemetry prompt moved to beginning of install. Audio autoswitch now runs unconditionally. FIXED: Opting out of telemetry now also removes old scripts and timers from previous installs." }
@@ -2781,7 +2781,7 @@ Item {
                                     hoverEnabled: true
                                     onClicked: {
                                         let url = "https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh";
-                                        let cmd = "if command -v kitty >/dev/null 2>&1; then kitty --hold bash -c \"$(curl -fsSL " + url + ")\"; else bash -c \"$(curl -fsSL " + url + ")\"; fi";
+                                        let cmd = "if command -v kitty >/dev/null 2>&1; then kitty --hold bash -c 'eval \"$(curl -fsSL " + url + ")\"'; else ${TERM:-xterm} -hold -e bash -c 'eval \"$(curl -fsSL " + url + ")\"'; fi";
                                         Quickshell.execDetached(["bash", "-c", cmd]);
                                     }
                                 }
