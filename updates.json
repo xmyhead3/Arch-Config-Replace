@@ -1,7 +1,24 @@
 {
-  "latest_version": "1.7.51",
+  "latest_version": "1.7.52",
   "videos": [],
   "changelog": [
+        {
+            "version": "1.7.52",
+            "changes": [
+                "ADDED: Caffeine Toggle — systemd-inhibit prevents suspend, indicator in TopBar",
+                "ADDED: Night Light — wlsunset blue light filter (3500K), auto-installs if missing, TopBar toggle",
+                "ADDED: Do Not Disturb — suppress all QuickShell notifications, TopBar indicator",
+                "ADDED: Power Profile Switcher — cycle balanced/performance/power-saver via powerprofilesctl, TopBar toggle",
+                "ADDED: Gaming Mode — one-click disables compositor effects, sets performance governor, enables DND + Caffeine",
+                "ADDED: VPN Quick Manager — toggle first WireGuard VPN via NetworkManager, TopBar indicator",
+                "ADDED: Quick Notes — floating text popup saves to ~/Notes.md (Super+Shift+N, TopBar button)",
+                "ADDED: System Monitor — live CPU/RAM/disk bars with 2s polling (Super+Shift+M, TopBar button)",
+                "ADDED: Workspace Overview — visual grid of all workspaces with window lists, click to switch (Super+Shift+W)",
+                "ADDED: Theme Profiles — save/restore wallpaper + toggle states via theme_profiles.sh",
+                "ENHANCED: TopBar now has 6 new toggle buttons (right) and 2 new utility buttons (left)",
+                "ENHANCED: All new features exposed via Super+Shift+ keybinds"
+            ]
+        },
         {
             "version": "1.7.51",
             "changes": [
