@@ -390,6 +390,12 @@ if [ -d "$INSTALL_DIR/Hyprland/scripts" ]; then
     echo -e "  ${G}✓${N} Scripts deployed"
 fi
 
+# Regenerate monitors.conf from settings.json and reload Hyprland
+if [ -f "$HYPR_TARGET/scripts/settings_watcher.sh" ]; then
+    bash "$HYPR_TARGET/scripts/settings_watcher.sh" --compile 2>/dev/null || true
+    echo -e "  ${G}✓${N} Monitor config regenerated from settings.json"
+fi
+
 # Faces + Templates
 [ -d "$INSTALL_DIR/Faces" ] && mkdir -p "$HYPR_TARGET/Faces" && cp -rf "$INSTALL_DIR/Faces/"* "$HYPR_TARGET/Faces/" 2>/dev/null || true
 [ -d "$INSTALL_DIR/Hyprland/templates" ] && mkdir -p "$HYPR_TARGET/templates" && cp -rf "$INSTALL_DIR/Hyprland/templates/"* "$HYPR_TARGET/templates/" 2>/dev/null || true
