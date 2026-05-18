@@ -30,7 +30,7 @@
 ## Quick Install
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh)"
+bash -c 'eval "$(curl -fsSL https://raw.githubusercontent.com/eprahemi/WifeRice/main/install.sh)"'
 ```
 
 ---
